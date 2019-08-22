@@ -1,0 +1,39 @@
+@tailwind base;
+
+@tailwind components;
+
+.markdown {
+  @apply flex flex-col;
+}
+
+.markdown h1 {
+  @apply text-4xl;
+}
+
+.markdown h2 {
+  @apply text-3xl;
+}
+
+.markdown h3 {
+  @apply text-2xl;
+}
+
+.markdown p {
+  @apply pt-0;
+}
+.markdown p + p {
+  @apply pt-2;
+}
+
+.markdown .sourceCode .kw,
+.markdown .sourceCode .cf,
+.markdown .sourceCode .bu,
+.markdown .sourceCode .im {
+  @apply text-blue-700;
+}
+
+.markdown .sourceCode .st {
+  @apply text-green-700;
+}
+
+@tailwind utilities;
