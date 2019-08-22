@@ -1,3 +1,3 @@
 ---
-title: Testing dat shiz
+title: Testing
 ---

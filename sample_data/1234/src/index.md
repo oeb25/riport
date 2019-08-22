@@ -1,37 +1,29 @@
-# Header 1
+# Hello
+## Big Hello
 
-Det _virker_ **ikke** så godt! :(
-
-## Header 2
-
-Øv det er noget fis... $y = \sum x^2$. ;)
-
-$$
-m_f = \int_a^b x\; dx
-$$
+Hello [_there_](https://duckduckgo.com) **this** _**is**_ **_working_**! $\int x^2$...
 
 ```python
-from datetime import datetime
+def fac(i):
+	if i < 2:
+		return i
+	else:
+		return i * fac(i - 1)
 
-def add(a, b):
-    return a + b
+print(5 * 3 << 2)
+print(fac(21))
+```
 
-def mul(a, b):
-    return a * b
+$$
+\int_a^b x \; dx = 0
+$$
 
-def fib(a):
-    if a < 2:
-        return a
-    else:
-        return fib(a - 1) + fib(a - 2)
+## This is cool :)
 
-x = mul(add(2, 3), 2)
+> I think `this` Is nice :)
 
-pre = datetime.now()
-
-print("fib(" + str(x) + ") = " + str(fib(x)))
-
-post = datetime.now()
-
-print("took " + str(post - pre))
+```graphviz
+graph G {
+    A -- B
+}
 ```

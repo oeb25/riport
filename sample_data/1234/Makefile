@@ -1,11 +1,9 @@
 ORDER := index
-DEPS := $(shell printf "html/%s.html " $(ORDER))
+DEPS := $(shell printf "json/%s.json " $(ORDER))
 SRCS := $(shell printf "src/%s.md " $(ORDER))
 
-CDN := http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML
+out.json: $(DEPS) $(SRCS)
+	pandoc $(DEPS) --katex -o out.json
 
-out.html: $(DEPS) $(SRCS) header.md
-	pandoc header.md $(DEPS) -s -o out.html
-
-html/%.html: src/%.md
-	pandoc $^ --highlight-style=monochrome -t json | ./graphviz.py | pandoc -f json -o $@
+json/%.json: src/%.md
+	pandoc $^ -t json | ./graphviz.py | pandoc --katex -f json -o $@

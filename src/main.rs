@@ -78,7 +78,7 @@ fn make_project(project_dir: &Path) -> std::io::Result<std::process::Output> {
 fn output(id: String) -> std::io::Result<String> {
     let project_dir = PathBuf::from("./sample_data/").join(id);
     make_project(&project_dir)?;
-    fs::read_to_string(project_dir.join("out.html"))
+    fs::read_to_string(project_dir.join("out.json"))
 }
 
 #[derive(Deserialize, Debug)]

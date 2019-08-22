@@ -35,4 +35,4 @@ export const updateFile = (p: {
 }) => post(`projects/${p.projectId}/updateFile`, p);
 
 export const getOutput = (p: { projectId: string }) =>
-  text(`projects/${p.projectId}/output`);
+  json(`projects/${p.projectId}/output`);

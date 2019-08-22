@@ -10,13 +10,18 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@types/katex": "^0.10.1",
+    "@types/mathjax": "0.0.35",
+    "@types/prismjs": "^1.16.0",
     "@types/react-dom": "^16.9.0",
     "parcel-bundler": "^1.12.3",
     "tailwindcss": "^1.1.2",
     "typescript": "^3.5.3"
   },
   "dependencies": {
+    "katex": "^0.11.0",
     "monaco-editor": "^0.17.1",
+    "prismjs": "^1.17.1",
     "react": "^16.9.0",
     "react-dom": "^16.9.0",
     "react-monaco-editor": "^0.30.1"

@@ -25,15 +25,16 @@
   @apply pt-2;
 }
 
-.markdown .sourceCode .kw,
-.markdown .sourceCode .cf,
-.markdown .sourceCode .bu,
-.markdown .sourceCode .im {
-  @apply text-blue-700;
+.markdown a {
+  @apply text-blue-200 underline;
 }
 
-.markdown .sourceCode .st {
-  @apply text-green-700;
+.markdown .code {
+  @apply mt-2 py-2 px-3 shadow-xl bg-gray-800 rounded-t-lg;
+}
+
+.markdown .code + .code {
+  @apply border-t mt-0 rounded-t-none;
 }
 
 @tailwind utilities;
