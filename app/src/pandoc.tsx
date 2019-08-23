@@ -20,6 +20,7 @@ export type Fragment =
   | { t: "Space"; c: string }
   | { t: "Header"; c: [1 | 2 | 3 | 4 | 5 | 6, [string, [], []], Fragment[]] }
   | { t: "Quoted"; c: Fragment[] }
+  | { t: "SoftBreak" }
   | { t: "Emph"; c: Fragment[] }
   | { t: "Strong"; c: Fragment[] }
   | {
@@ -31,15 +32,20 @@ export type Fragment =
       t: "BlockQuote";
       c: Fragment[];
     }
+  | {
+      t: "Image";
+      c: [["", [], []], [], [string, ""]];
+    }
   | { t: "Code"; c: [["", [], []], string] }
   | { t: "Math"; c: [{ t: "InlineMath" | "DisplayMath" }, string] }
   | { t: "CodeBlock"; c: [[string, string], string] };
 
 export const Render: React.SFC<{
+  projectId: string;
   src: Fragment[] | Fragment;
-}> = ({ src }) => {
+}> = ({ src, projectId }) => {
   const propagate = (c: Fragment[]) =>
-    c.map((b, i) => <Render key={i} src={b} />);
+    c.map((b, i) => <Render key={i} projectId={projectId} src={b} />);
 
   if (Array.isArray(src)) {
     return <>{propagate(src)}</>;
@@ -76,6 +82,8 @@ export const Render: React.SFC<{
     }
   } else if (src.t == "Space") {
     return <> </>;
+  } else if (src.t == "SoftBreak") {
+    return <br />;
   } else if (src.t == "Quoted") {
     return <>"{JSON.stringify(src)}"</>;
   } else if (src.t == "Emph") {
@@ -85,7 +93,13 @@ export const Render: React.SFC<{
   } else if (src.t == "Link") {
     return <a href={src.c[2][0]}>{propagate(src.c[1])}</a>;
   } else if (src.t == "Code") {
-    return <code className="bg-gray-800">{src.c[1]}</code>;
+    return <code className="inline">{src.c[1]}</code>;
+  } else if (src.t == "Image") {
+    return (
+      <span className="flex items-center justify-center m-5">
+        <img src={`/api/projects/${projectId}/static/${src.c[2][0]}`} />
+      </span>
+    );
   } else if (src.t == "CodeBlock") {
     const lang = src.c[0][1];
     const gramma = Prism.languages[lang];
@@ -103,8 +117,6 @@ export const Render: React.SFC<{
       </pre>
     );
   } else if (src.t == "Math") {
-    console.log(katex.renderToString(src.c[1]));
-
     try {
       // TODO
       if (src.c[0].t == "InlineMath") {

@@ -1,4 +1,4 @@
-ORDER := index
+ORDER := index conclusion
 DEPS := $(shell printf "json/%s.json " $(ORDER))
 SRCS := $(shell printf "src/%s.md " $(ORDER))
 

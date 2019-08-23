@@ -61,7 +61,7 @@ impl DirEntry {
 
 #[post("/projects/<id>/files")]
 fn files(id: String) -> std::io::Result<Json<Vec<DirEntry>>> {
-    let de = DirEntry::build_from(&PathBuf::from("./sample_data/").join(id))?;
+    let de = DirEntry::build_from(&PathBuf::from("./sample_data/").join(id).join("src"))?;
     match de {
         DirEntry::File { .. } => unimplemented!(),
         DirEntry::Folder { children, .. } => Ok(Json(children)),
@@ -88,7 +88,7 @@ struct FileRequest {
 
 #[post("/projects/<id>/file", format = "json", data = "<req>")]
 fn file(id: String, req: Json<FileRequest>) -> std::io::Result<String> {
-    let project_dir = PathBuf::from("./sample_data/").join(id);
+    let project_dir = PathBuf::from("./sample_data").join(id).join("src");
     let file_dir = req
         .path
         .iter()
@@ -104,12 +104,30 @@ struct UpdateFileRequest {
 
 #[post("/projects/<id>/updateFile", format = "json", data = "<req>")]
 fn update_file(id: String, req: Json<UpdateFileRequest>) -> std::io::Result<()> {
-    let project_dir = PathBuf::from("./sample_data/").join(id);
+    let project_dir = PathBuf::from("./sample_data").join(id).join("src");
     let file_dir = req
         .path
         .iter()
         .fold(project_dir, |path, name| path.join(name));
     fs::write(file_dir, &req.contents)
+}
+
+#[get("/projects/<id>/static/<path..>")]
+fn static_files<'r>(
+    id: String,
+    path: PathBuf,
+) -> Result<rocket::response::NamedFile, rocket::http::Status> {
+    use rocket::handler::Outcome;
+    use rocket::http::Status;
+
+    let project_dir = PathBuf::from("./sample_data/").join(id);
+    let path = project_dir.join(path);
+
+    if path.is_dir() {
+        return Err(Status::NotFound);
+    }
+
+    rocket::response::NamedFile::open(&path).map_err(|_| Status::NotFound)
 }
 
 fn main() {
@@ -120,7 +138,10 @@ fn main() {
             .address("0.0.0.0")
             .unwrap(),
     )
-    .mount("/api", routes![projects, files, file, output, update_file])
+    .mount(
+        "/api",
+        routes![projects, files, file, output, update_file, static_files],
+    )
     .mount("/", rocket_contrib::serve::StaticFiles::from("./app/dist/"))
     .launch();
 }

@@ -1,6 +1,28 @@
 @tailwind base;
 
+* {
+  transition: color 200ms ease, background-color 200ms ease,
+    border-color 200ms ease;
+}
+
+body {
+  overflow: hidden;
+}
+
+#app > div {
+  @apply text-gray-100;
+  background: #1e1e1e;
+}
+
+#app > .bright {
+  @apply text-gray-900 bg-white;
+}
+
 @tailwind components;
+
+a {
+  @apply text-blue-200 underline;
+}
 
 .markdown {
   @apply flex flex-col;
@@ -29,6 +51,10 @@
   @apply text-blue-200 underline;
 }
 
+.markdown code.inline {
+  @apply bg-gray-800;
+}
+
 .markdown .code {
   @apply mt-2 py-2 px-3 shadow-xl bg-gray-800 rounded-t-lg;
 }
@@ -37,4 +63,24 @@
   @apply border-t mt-0 rounded-t-none;
 }
 
+.bright a {
+  @apply text-blue-800 underline;
+}
+
+.bright .markdown .code {
+  @apply bg-gray-100 shadow;
+}
+
+.bright .markdown code.inline {
+  @apply bg-gray-200;
+}
+
 @tailwind utilities;
+
+a.selected {
+  @apply text-blue-100 border-b;
+}
+
+.bright a {
+  @apply text-blue-600;
+}
