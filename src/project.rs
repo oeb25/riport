@@ -62,7 +62,7 @@ impl Compile {
     fn needs_compile(&self) -> bool {
         match self {
             Compile::None | Compile::Stale(_) => true,
-            Compile::UpToDate(s) => false,
+            Compile::UpToDate(_) => false,
         }
     }
     fn stale(&self) -> Compile {
@@ -165,7 +165,7 @@ graph G {
 "#;
 
 impl File {
-    fn new() -> File {
+    fn sample_file() -> File {
         File {
             lock: None,
             last_source_change: None,
@@ -341,13 +341,12 @@ impl Project {
             files: HashMap::new(),
         })
     }
-    pub fn idk(&mut self) {}
     pub fn new_file(&mut self, name: &str) -> FileId {
         let id = FileId {
             path: PathBuf::from(name),
         };
         self.order.push(id.clone());
-        self.files.insert(id.clone(), File::new());
+        self.files.insert(id.clone(), File::sample_file());
         self.compile()
             .expect("failed to compile newly created file");
         id
@@ -426,7 +425,7 @@ impl Project {
                     _ => {}
                 }
                 match (&old.last_compiled_time, &new.last_compiled_time) {
-                    (None, Some(change)) => {
+                    (None, Some(_)) => {
                         changed_compiled_files.push(delta_item(&id, &new));
                     }
                     (Some(a), Some(b)) if a < b => {

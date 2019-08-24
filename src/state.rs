@@ -3,10 +3,10 @@ use std::io;
 use std::path::PathBuf;
 use std::sync::{
     atomic::{AtomicUsize, Ordering},
-    Arc, Mutex, MutexGuard,
+    Arc, Mutex,
 };
 
-use crate::project::{EditError, EditorId, Project, ProjectId};
+use crate::project::{EditorId, Project, ProjectId};
 
 pub struct ProjectsState {
     root: PathBuf,
@@ -16,7 +16,7 @@ pub struct ProjectsState {
 
 impl ProjectsState {
     pub fn new(root: PathBuf) -> ProjectsState {
-        let mut state = ProjectsState {
+        let state = ProjectsState {
             root,
             editor_count: AtomicUsize::new(0),
             projects: Mutex::new(HashMap::new()),
