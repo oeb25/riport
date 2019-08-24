@@ -1,5 +1,5 @@
 import * as React from "react";
-import * as server from "../server";
+import "../editorSetup";
 import ReactMonaco from "react-monaco-editor";
 import { DarkMode } from "./DarkMode";
 
