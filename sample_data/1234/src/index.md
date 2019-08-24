@@ -1,5 +1,9 @@
 # Big Hello
-## Hello
+## Hello wow
+
+Hej _asdfs_!
+
+Fery nice $\sum_2^b x = 12$!
 
 Hello [_there_](https://duckduckgo.com) **this** _**is**_ **_working_**! $\int x^2$...
 
@@ -25,26 +29,29 @@ $$
 
 ```graphviz
 graph G {
-    A -- B
     B -- C
+    B -- G
     C -- D
     D -- A
+    A -- B
     G -- D
 }
 ```
 
 ```python
-def fac(i):
-	if i < 2:
-		return i
+def fib(a):
+    if a > 10:
+        return -1
+	if a < 2:
+		return a
 	else:
-		return i * fac(i - 1)
+		return fib(a - 1) + fib(a - 2)
 
-print(5 * 3 << 2)
-print(fac(21))
+for i in range(0, 10):
+    print('fib({}) = {}'.format(i, fib(i)))
 ```
 
-## More to come
+## More to come $(a \leftrightarrow b) \to (a \to b)$
 
 This is the new page.
 

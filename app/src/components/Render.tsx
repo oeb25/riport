@@ -14,8 +14,7 @@ import "prismjs/themes/prism-dark.css";
 // import "prismjs/themes/prism-twilight.css";
 // import "prismjs/themes/prism.css";
 
-import * as api from "./api";
-import { ProjectId } from "./state";
+import * as server from "../server";
 
 export type Document = { blocks: Fragment[] };
 export type Fragment =
@@ -44,7 +43,7 @@ export type Fragment =
   | { t: "CodeBlock"; c: [[string, string], string] };
 
 export const Render: React.SFC<{
-  projectId: ProjectId;
+  projectId: server.ProjectId;
   src: Fragment[] | Fragment;
 }> = ({ src, projectId }) => {
   const propagate = (c: Fragment[]) =>
@@ -100,7 +99,7 @@ export const Render: React.SFC<{
   } else if (src.t == "Image") {
     return (
       <span className="flex items-center justify-center m-5">
-        <img src={`${api.base}/projects/${projectId}/static/${src.c[2][0]}`} />
+        <img src={server.staticUrl(projectId, src.c[2][0])} />
       </span>
     );
   } else if (src.t == "CodeBlock") {

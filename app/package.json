@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "parcel src/index.html"
+    "start": "parcel src/index.html",
+    "build": "parcel build src/index.html"
   },
   "keywords": [],
   "author": "",
@@ -19,6 +20,7 @@
     "typescript": "^3.5.3"
   },
   "dependencies": {
+    "js-sha512": "^0.8.0",
     "katex": "^0.11.0",
     "monaco-editor": "^0.17.1",
     "prismjs": "^1.17.1",
