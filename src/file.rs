@@ -74,7 +74,7 @@ impl Message for GetInfo {
 impl Handler<GetInfo> for File {
     type Result = FileInfo;
 
-    fn handle(&mut self, _: GetInfo, ctx: &mut Self::Context) -> FileInfo {
+    fn handle(&mut self, _: GetInfo, _: &mut Self::Context) -> FileInfo {
         FileInfo {
             name: self.name.clone(),
             id: self.id,
@@ -102,7 +102,7 @@ impl Message for JoinFile {
 impl Handler<JoinFile> for File {
     type Result = usize;
 
-    fn handle(&mut self, join: JoinFile, ctx: &mut Self::Context) -> usize {
+    fn handle(&mut self, join: JoinFile, _: &mut Self::Context) -> usize {
         let id = self.listeners.len();
         self.listeners
             .push(Some((join.kind, join.addr.downgrade())));
@@ -138,7 +138,7 @@ impl Message for LeaveFile {
 impl Handler<LeaveFile> for File {
     type Result = ();
 
-    fn handle(&mut self, leave: LeaveFile, ctx: &mut Self::Context) {
+    fn handle(&mut self, leave: LeaveFile, _: &mut Self::Context) {
         self.listeners[leave.id] = None;
     }
 }
@@ -155,10 +155,10 @@ impl Message for EditFile {
 impl Handler<EditFile> for File {
     type Result = ();
 
-    fn handle(&mut self, edit: EditFile, ctx: &mut Self::Context) {
-        self.project
-            .upgrade()
-            .map(|p| p.do_send(FileChanged { id: self.id }));
+    fn handle(&mut self, edit: EditFile, _: &mut Self::Context) {
+        if let Some(p) = self.project.upgrade() {
+            p.do_send(FileChanged { id: self.id });
+        }
         self.src = edit.src;
         let ignore = edit.ignore;
         for (kind, l) in self.listeners.iter().enumerate().filter_map(|(i, f)| {
@@ -188,11 +188,11 @@ impl Handler<EditFile> for File {
         }
         self.compile();
         for (kind, l) in self.listeners.iter().enumerate().filter_map(|(i, f)| {
-            // if Some(i) != ignore {
-            f.as_ref()
-            // } else {
-            //     None
-            // }
+            if Some(i) != ignore {
+                f.as_ref()
+            } else {
+                None
+            }
         }) {
             if *kind != ListenKind::Doc {
                 continue;

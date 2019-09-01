@@ -61,7 +61,7 @@ impl Project {
     }
     pub fn generate_file_info(
         &mut self,
-        ctx: &mut Context<Self>,
+        _: &mut Context<Self>,
     ) -> impl Future<Item = Vec<FileInfo>> {
         let mut files = vec![];
 
@@ -94,7 +94,7 @@ impl Message for GetInfo {
 impl Handler<GetInfo> for Project {
     type Result = ProjectInfo;
 
-    fn handle(&mut self, _: GetInfo, ctx: &mut Self::Context) -> ProjectInfo {
+    fn handle(&mut self, _: GetInfo, _: &mut Self::Context) -> ProjectInfo {
         self.generate_info()
     }
 }
@@ -126,7 +126,7 @@ impl Handler<JoinProject> for Project {
 
         self.generate_file_info(ctx)
             .into_actor(self)
-            .then(move |res, act, ctx| match res {
+            .then(move |res, _, _| match res {
                 Ok(list) => {
                     join.addr.do_send(Server2Client::Project {
                         id: project_id,
@@ -153,7 +153,7 @@ impl Message for LeaveProject {
 impl Handler<LeaveProject> for Project {
     type Result = ();
 
-    fn handle(&mut self, leave: LeaveProject, ctx: &mut Self::Context) {
+    fn handle(&mut self, leave: LeaveProject, _: &mut Self::Context) {
         self.listeners[leave.id] = None;
     }
 }
@@ -168,7 +168,7 @@ impl Message for GetFile {
 impl Handler<GetFile> for Project {
     type Result = Option<Addr<File>>;
 
-    fn handle(&mut self, get_file: GetFile, ctx: &mut Self::Context) -> Option<Addr<File>> {
+    fn handle(&mut self, get_file: GetFile, _: &mut Self::Context) -> Option<Addr<File>> {
         self.files.get(&get_file.id).cloned()
     }
 }
@@ -183,7 +183,7 @@ impl Message for FileChanged {
 impl Handler<FileChanged> for Project {
     type Result = ();
 
-    fn handle(&mut self, _: FileChanged, ctx: &mut Self::Context) -> () {
+    fn handle(&mut self, _: FileChanged, _: &mut Self::Context) {
         self.last_changed = SystemTime::now();
 
         let info = self.generate_info();
@@ -213,7 +213,7 @@ impl Message for ReorderFile {
 impl Handler<ReorderFile> for Project {
     type Result = ();
 
-    fn handle(&mut self, reorder: ReorderFile, ctx: &mut Self::Context) {
+    fn handle(&mut self, reorder: ReorderFile, _: &mut Self::Context) {
         let old_index = self
             .order
             .iter()

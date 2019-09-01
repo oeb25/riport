@@ -21,8 +21,8 @@ pub struct FileCache {
 impl FileCache {
     fn id_for(&self, kind: ListenKind) -> Option<usize> {
         match kind {
-            ListenKind::Src => self.src_id.clone(),
-            ListenKind::Doc => self.doc_id.clone(),
+            ListenKind::Src => self.src_id,
+            ListenKind::Doc => self.doc_id,
         }
     }
     fn set_id_for(&mut self, kind: ListenKind, v: Option<usize>) {
@@ -56,7 +56,7 @@ impl Client {
     pub fn get_project(
         &mut self,
         id: ProjectId,
-        ctx: &mut ws::WebsocketContext<Self>,
+        _: &mut ws::WebsocketContext<Self>,
     ) -> impl fut::ActorFuture<Actor = Self, Error = (), Item = (Option<usize>, Addr<Project>)>
     {
         if let Some(p) = self.projects.get(&id) {
@@ -66,14 +66,14 @@ impl Client {
                 .hub
                 .send(GetProject { id })
                 .into_actor(self)
-                .map(move |res, act, ctx| match res {
+                .map(move |res, act, _| match res {
                     Some(project) => {
                         act.projects.insert(id, (None, project.clone()));
                         (None, project)
                     }
                     _ => unimplemented!(),
                 })
-                .map_err(|e, act, ctx| {
+                .map_err(|e, _, _| {
                     panic!("{:?}", e);
                 });
             Either::B(f)
@@ -90,11 +90,11 @@ impl Client {
         } else {
             let f = self
                 .get_project(project_id, ctx)
-                .then(move |res, act, ctx| match res {
+                .then(move |res, act, _| match res {
                     Ok((_, project)) => project.send(GetFile { id: file_id }).into_actor(act),
                     _ => unimplemented!(),
                 })
-                .map(move |file, act, ctx| {
+                .map(move |file, act, _| {
                     let file = file.expect("file not found");
                     let cache = FileCache {
                         src_id: None,
@@ -104,7 +104,7 @@ impl Client {
                     act.files.insert((project_id, file_id), cache.clone());
                     cache
                 })
-                .map_err(|e, act, ctx| {
+                .map_err(|e, _, _| {
                     panic!("{:?}", e);
                 });;
             Either::B(f)
@@ -117,7 +117,7 @@ impl Client {
     ) -> impl fut::ActorFuture<Actor = Self, Error = (), Item = ()> {
         let my_adder = ctx.address();
         self.get_project(project_id, ctx)
-            .then(move |res, act, ctx| match res {
+            .then(move |res, act, _| match res {
                 Ok((id, project)) => {
                     if id.is_some() {
                         Either::A(fut::ok(()))
@@ -125,10 +125,10 @@ impl Client {
                         let f = project
                             .send(JoinProject { addr: my_adder })
                             .into_actor(act)
-                            .map(move |id, act, ctx| {
+                            .map(move |id, act, _| {
                                 act.projects.insert(project_id, (Some(id), project));
                             })
-                            .map_err(|e, act, ctx| {
+                            .map_err(|e, _, _| {
                                 panic!("{:?}", e);
                             });
                         Either::B(f)
@@ -143,7 +143,7 @@ impl Client {
         ctx: &mut ws::WebsocketContext<Self>,
     ) -> impl fut::ActorFuture<Actor = Self, Error = (), Item = ()> {
         self.get_project(project_id, ctx)
-            .map(move |(con, project), act, ctx| {
+            .map(move |(con, project), act, _| {
                 project.do_send(LeaveProject { id: con.unwrap() });
                 act.projects.remove(&project_id);
             })
@@ -157,9 +157,9 @@ impl Client {
     ) -> impl fut::ActorFuture<Actor = Self, Error = (), Item = ()> {
         let my_adder = ctx.address();
         self.get_file(project_id, file_id, ctx)
-            .then(move |res, act, ctx| match res {
+            .then(move |res, act, _| match res {
                 Ok(cache) => {
-                    if let Some(id) = cache.id_for(kind) {
+                    if cache.id_for(kind).is_some() {
                         Either::A(fut::ok(()))
                     } else {
                         let f = cache
@@ -169,7 +169,7 @@ impl Client {
                                 kind,
                             })
                             .into_actor(act)
-                            .map(move |id, act, ctx| {
+                            .map(move |id, act, _| {
                                 act.files.insert(
                                     (project_id, file_id),
                                     FileCache {
@@ -187,7 +187,7 @@ impl Client {
                                     },
                                 );
                             })
-                            .map_err(|e, act, ctx| {
+                            .map_err(|e, _, _| {
                                 panic!("{:?}", e);
                             });
                         Either::B(f)
@@ -204,7 +204,7 @@ impl Client {
         ctx: &mut ws::WebsocketContext<Self>,
     ) -> impl fut::ActorFuture<Actor = Self, Error = (), Item = ()> {
         self.get_file(project_id, file_id, ctx)
-            .map(move |cache, act, ctx| {
+            .map(move |cache, act, _| {
                 cache.file.do_send(LeaveFile {
                     id: cache.id_for(kind).unwrap(),
                 });
@@ -226,13 +226,13 @@ impl Client {
         ctx: &mut ws::WebsocketContext<Self>,
     ) -> impl fut::ActorFuture<Actor = Self, Error = (), Item = ()> {
         self.get_file(project_id, file_id, ctx)
-            .map(move |cache, act, ctx| {
+            .map(move |cache, act, _| {
                 cache.file.do_send(EditFile {
                     src,
                     ignore: act
                         .files
                         .get(&(project_id, file_id))
-                        .and_then(|cache| cache.src_id.clone()),
+                        .and_then(|cache| cache.src_id),
                 });
             })
     }
@@ -244,7 +244,7 @@ impl Client {
         ctx: &mut ws::WebsocketContext<Self>,
     ) -> impl fut::ActorFuture<Actor = Self, Error = (), Item = ()> {
         self.get_project(project_id, ctx)
-            .map(move |(con, project), act, ctx| {
+            .map(move |(_, project), _, _| {
                 project.do_send(ReorderFile {
                     id: file_id,
                     new_index,
@@ -262,7 +262,7 @@ impl Actor for Client {
                 adder: ctx.address(),
             })
             .into_actor(self)
-            .then(|res, act, ctx| {
+            .then(|res, act, _| {
                 match res {
                     Ok(hub::ConnectRes { id }) => {
                         act.id = id;
@@ -288,7 +288,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for Client {
                 let msg: Client2Server = serde_json::from_str(&contents).unwrap();
                 println!("Got: {:?}", msg);
                 match msg {
-                    Client2Server::CreateProject { project_name } => {
+                    Client2Server::CreateProject { .. } => {
                         println!("unhandled create event");
                     }
                     Client2Server::Project {
@@ -344,18 +344,6 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for Client {
         }
     }
 }
-
-// impl Handler<HubMsg> for Client {
-//     type Result = ();
-
-//     fn handle(&mut self, msg: HubMsg, ctx: &mut Self::Context) {
-//         // match msg {
-//         //     HubMsg::Message { contents } => {
-//         //         ctx.text(contents);
-//         //     }
-//         // }
-//     }
-// }
 
 impl Handler<Server2Client> for Client {
     type Result = ();

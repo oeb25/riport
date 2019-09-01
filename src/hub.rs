@@ -28,7 +28,7 @@ impl Default for Hub {
 impl Hub {
     fn generate_project_info_list(
         &mut self,
-        ctx: &mut Context<Self>,
+        _: &mut Context<Self>,
     ) -> impl Future<Item = Vec<ProjectInfo>> {
         let mut projects = vec![];
 
@@ -76,7 +76,7 @@ impl Handler<Connect> for Hub {
         println!("bount to generate");
         self.generate_project_info_list(ctx)
             .into_actor(self)
-            .then(move |res, act, ctx| {
+            .then(move |res, _act, _| {
                 println!("generated");
                 match res {
                     Ok(list) => msg.adder.do_send(Server2Client::Projects { list }),
@@ -107,7 +107,7 @@ pub struct CreateProjectRes {
 
 impl Handler<CreateProject> for Hub {
     type Result = CreateProjectRes;
-    fn handle(&mut self, msg: CreateProject, ctx: &mut Context<Self>) -> CreateProjectRes {
+    fn handle(&mut self, msg: CreateProject, _: &mut Context<Self>) -> CreateProjectRes {
         let (id, _) = self.create_project(msg.name);
 
         CreateProjectRes { id }
@@ -124,7 +124,7 @@ impl Message for GetProject {
 
 impl Handler<GetProject> for Hub {
     type Result = Option<Addr<Project>>;
-    fn handle(&mut self, msg: GetProject, ctx: &mut Context<Self>) -> Option<Addr<Project>> {
+    fn handle(&mut self, msg: GetProject, _: &mut Context<Self>) -> Option<Addr<Project>> {
         self.projects.get(&msg.id).cloned()
     }
 }
