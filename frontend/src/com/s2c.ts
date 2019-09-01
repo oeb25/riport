@@ -21,6 +21,9 @@ export type Server2Client_Project = Mapper<{
   Files: {
     list: FileInfo[];
   };
+  UpdateInfo: {
+    info: ProjectInfo;
+  };
   File: {
     id: FileId;
     msg: Server2Client_Project_File;

@@ -1,4 +1,4 @@
-import { Fragment } from "../Render";
+import { Fragment } from "../components/Render";
 
 export type SystemTime = {
   secs_since_epoch: number;

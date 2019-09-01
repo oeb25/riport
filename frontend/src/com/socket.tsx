@@ -33,13 +33,13 @@ export const socket = (
   React.useEffect(() => {
     const ws = wsStatus.type != "INITIAL" ? wsStatus.ws : null;
     if (ws) {
-      console.log("binding...");
+      // console.log("binding...");
       ws.onopen = () => {
         setWsStatus({ type: "CONNECTED", ws });
       };
       ws.onmessage = e => {
         const msg = JSON.parse(e.data);
-        console.log(e.data);
+        // console.log("REVICE", e.data);
         // setMessages([...messages, e.data]);
         // dispatch({ type: "NEW_MESSAGE", contents: e.data });
         handler(msg);
@@ -59,7 +59,7 @@ export const socket = (
       wsStatus.type == "INITIAL"
     ) {
       try {
-        const ws = new WebSocket("ws://0.0.0.0:8080/ws/");
+        const ws = new WebSocket("ws://0.0.0.0:8000/ws/");
         setWsStatus({ type: "CONNECTING", ws });
       } catch (e) {
         setWsStatus({ type: "ERROR", ws });
@@ -84,8 +84,23 @@ export const socket = (
     const ws = "ws" in wsStatus ? wsStatus.ws : null;
     if (ws) {
       ws.send(JSON.stringify(msg));
+    } else {
+      console.error("DIDN'T SEND!");
     }
   };
 
   return [wsStatus, send];
+};
+
+export type Send = (msg: Client2Server) => void;
+
+export const SocketContext = React.createContext<null | WebSocketStatus>(null);
+
+export const SocketProvider: React.SFC<{ wsStatus: WebSocketStatus }> = ({
+  children,
+  wsStatus
+}) => {
+  return (
+    <SocketContext.Provider value={wsStatus}>{children}</SocketContext.Provider>
+  );
 };

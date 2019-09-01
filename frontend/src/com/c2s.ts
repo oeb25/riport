@@ -17,6 +17,10 @@ export type Client2Server_Project = Mapper<{
   CreateFile: {
     file_name: string;
   };
+  Reorder: {
+    id: FileId;
+    new_index: number;
+  };
   File: {
     id: FileId;
     msg: Client2Server_Project_File;

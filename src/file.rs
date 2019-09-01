@@ -5,8 +5,10 @@ use serde::{Deserialize, Serialize};
 
 use std::time::SystemTime;
 
-use crate::client::{Client, Server2Client, Server2Client_Project, Server2Client_Project_File};
-use crate::project::ProjectId;
+use crate::client::Client;
+use crate::project::{FileChanged, Project, ProjectId};
+
+use crate::s2c::*;
 
 pub type Doc = Vec<Block>;
 
@@ -15,38 +17,45 @@ pub struct FileId {
     pub file_id: i64,
 }
 
+#[derive(PartialEq, Eq, Debug, Clone, Copy)]
+pub enum ListenKind {
+    Doc,
+    Src,
+}
+
 pub struct File {
     pub id: FileId,
     pub project_id: ProjectId,
+    pub project: WeakAddr<Project>,
     pub name: String,
     pub src: String,
     pub doc: Option<Doc>,
-    pub listeners: Vec<Option<WeakAddr<Client>>>,
+    pub listeners: Vec<Option<(ListenKind, WeakAddr<Client>)>>,
 }
 
 impl File {
-    pub fn new(id: FileId, project_id: ProjectId, name: String) -> File {
-        File {
+    pub fn new(
+        id: FileId,
+        project_id: ProjectId,
+        project: WeakAddr<Project>,
+        name: String,
+        src: String,
+    ) -> File {
+        let mut file = File {
             id,
             project_id,
+            project,
             name,
-            src: String::new(),
+            src,
             doc: None,
             listeners: vec![],
-        }
+        };
+        file.compile();
+        file
     }
-    // pub fn compile(
-    //     &mut self,
-    //     ctx: &mut Context<Self>,
-    // ) -> impl fut::ActorFuture<Actor = Self, Error = (), Item = ()> {
-    //     let doc = crate::doc::compile(&self.src, &std::path::PathBuf::from("./tmp"))
-    //         .expect("failed to compile");
-    //     self.doc = Some(doc.1);
-    //     fut::ok(())
-    // }
     pub fn compile(&mut self) {
         let tmp = std::path::PathBuf::from("./tmp");
-        std::fs::create_dir_all(&tmp);
+        std::fs::create_dir_all(&tmp).expect("failed to create run dir");
 
         let doc = crate::doc::compile(&self.src, &tmp).expect("failed to compile");
         self.doc = Some(doc.1);
@@ -55,19 +64,6 @@ impl File {
 
 impl Actor for File {
     type Context = Context<Self>;
-}
-
-#[derive(Message)]
-struct ChangeFile {
-    src: String,
-}
-
-impl Handler<ChangeFile> for File {
-    type Result = ();
-
-    fn handle(&mut self, msg: ChangeFile, ctx: &mut Context<Self>) {
-        self.src = msg.src;
-    }
 }
 
 pub struct GetInfo;
@@ -95,6 +91,7 @@ pub struct FileInfo {
 }
 
 pub struct JoinFile {
+    pub kind: ListenKind,
     pub addr: Addr<Client>,
 }
 
@@ -107,14 +104,21 @@ impl Handler<JoinFile> for File {
 
     fn handle(&mut self, join: JoinFile, ctx: &mut Self::Context) -> usize {
         let id = self.listeners.len();
-        self.listeners.push(Some(join.addr.downgrade()));
+        self.listeners
+            .push(Some((join.kind, join.addr.downgrade())));
 
         join.addr.do_send(Server2Client::Project {
             id: self.project_id,
             msg: Server2Client_Project::File {
                 id: self.id,
-                msg: Server2Client_Project_File::FileSource {
-                    src: self.src.clone(),
+                msg: if join.kind == ListenKind::Src {
+                    Server2Client_Project_File::FileSource {
+                        src: self.src.clone(),
+                    }
+                } else {
+                    Server2Client_Project_File::FileDoc {
+                        doc: self.doc.clone().unwrap_or(vec![]),
+                    }
                 },
             },
         });
@@ -141,6 +145,7 @@ impl Handler<LeaveFile> for File {
 
 pub struct EditFile {
     pub src: String,
+    pub ignore: Option<usize>,
 }
 
 impl Message for EditFile {
@@ -151,8 +156,21 @@ impl Handler<EditFile> for File {
     type Result = ();
 
     fn handle(&mut self, edit: EditFile, ctx: &mut Self::Context) {
+        self.project
+            .upgrade()
+            .map(|p| p.do_send(FileChanged { id: self.id }));
         self.src = edit.src;
-        for l in self.listeners.iter().filter_map(|f| f.as_ref()) {
+        let ignore = edit.ignore;
+        for (kind, l) in self.listeners.iter().enumerate().filter_map(|(i, f)| {
+            if Some(i) != ignore {
+                f.as_ref()
+            } else {
+                None
+            }
+        }) {
+            if *kind != ListenKind::Src {
+                continue;
+            }
             let msg = Server2Client::Project {
                 id: self.project_id,
                 msg: Server2Client_Project::File {
@@ -169,7 +187,16 @@ impl Handler<EditFile> for File {
             }
         }
         self.compile();
-        for l in self.listeners.iter().filter_map(|f| f.as_ref()) {
+        for (kind, l) in self.listeners.iter().enumerate().filter_map(|(i, f)| {
+            // if Some(i) != ignore {
+            f.as_ref()
+            // } else {
+            //     None
+            // }
+        }) {
+            if *kind != ListenKind::Doc {
+                continue;
+            }
             let msg = Server2Client::Project {
                 id: self.project_id,
                 msg: Server2Client_Project::File {

@@ -1,10 +1,12 @@
 use actix::*;
-use futures::future::{err, join_all, ok};
+use futures::future::join_all;
 use futures::prelude::*;
 use std::collections::HashMap;
 
-use crate::client::{Client, Server2Client};
+use crate::client::Client;
 use crate::project::{GetInfo, Project, ProjectId, ProjectInfo};
+
+use crate::s2c::*;
 
 pub struct Hub {
     connections: Vec<Option<Addr<Client>>>,
@@ -42,10 +44,9 @@ impl Hub {
             project_id: self.projects.len() as i64,
         };
         let project = Project::new(id, name);
-        let project_addr = project.start();
-        self.projects.insert(id, project_addr.clone());
+        self.projects.insert(id, project.clone());
 
-        (id, project_addr)
+        (id, project)
     }
 }
 
@@ -107,7 +108,7 @@ pub struct CreateProjectRes {
 impl Handler<CreateProject> for Hub {
     type Result = CreateProjectRes;
     fn handle(&mut self, msg: CreateProject, ctx: &mut Context<Self>) -> CreateProjectRes {
-        let (id, project) = self.create_project(msg.name);
+        let (id, _) = self.create_project(msg.name);
 
         CreateProjectRes { id }
     }
@@ -121,44 +122,9 @@ impl Message for GetProject {
     type Result = Option<Addr<Project>>;
 }
 
-#[derive(MessageResponse)]
-pub struct GetProjectRes {
-    pub addr: Addr<Project>,
-}
-
 impl Handler<GetProject> for Hub {
     type Result = Option<Addr<Project>>;
     fn handle(&mut self, msg: GetProject, ctx: &mut Context<Self>) -> Option<Addr<Project>> {
         self.projects.get(&msg.id).cloned()
     }
 }
-
-// impl Handler<Msg> for Hub {
-//     type Result = MsgResponse;
-
-//     fn handle(&mut self, msg: Msg, ctx: &mut Context<Self>) -> MsgResponse {
-//         println!("Hub got message");
-//         match msg {
-//             Msg::Connect { addr } => {
-//                 let id = self.connections.len();
-//                 println!("New connection: {}", id);
-//                 self.connections.push(Some(addr));
-//                 MsgResponse::AssignID { id }
-//             }
-//             Msg::Disconnect { id } => {
-//                 println!("Disconnected: {}", id);
-//                 self.connections[id] = None;
-//                 MsgResponse::None
-//             }
-//             Msg::Message { contents } => {
-//                 println!("Message recived: {}", contents);
-//                 for con in self.connections.iter().filter_map(|x| x.as_ref()) {
-//                     con.do_send(HubMsg::Message {
-//                         contents: contents.clone(),
-//                     });
-//                 }
-//                 MsgResponse::None
-//             }
-//         }
-//     }
-// }

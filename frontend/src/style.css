@@ -48,11 +48,11 @@ a {
 }
 
 .markdown code.inline {
-  @apply bg-gray-800;
+  @apply bg-gray-700 p-px;
 }
 
 .markdown .code {
-  @apply mt-2 py-2 px-3 shadow-xl bg-gray-800 rounded-t-lg;
+  @apply mt-2 py-2 px-3 shadow-xl bg-gray-700 rounded-t-lg;
 }
 
 .markdown .code + .code {
@@ -79,4 +79,13 @@ a.selected {
 
 .bright a {
   @apply text-blue-600;
+}
+
+.justify-evenly {
+  justify-content: space-around;
+  justify-content: space-evenly;
+}
+
+.monaco-editor .lines-content.monaco-editor-background {
+  @apply m-2;
 }

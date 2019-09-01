@@ -1,23 +1,43 @@
 use actix::fut::Either;
 use actix::*;
-use actix_web::{get, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
 use actix_web_actors::ws;
-
-use futures::prelude::*;
-
-use serde::{Deserialize, Serialize};
 
 use std::collections::HashMap;
 
-use crate::file::{Doc, EditFile, File, FileId, FileInfo, JoinFile, LeaveFile};
-use crate::hub::{self, CreateProject, GetProject, Hub};
-use crate::project::{GetFile, JoinProject, LeaveProject, Project, ProjectId, ProjectInfo};
+use crate::file::{EditFile, File, FileId, JoinFile, LeaveFile, ListenKind};
+use crate::hub::{self, GetProject, Hub};
+use crate::project::{GetFile, JoinProject, LeaveProject, Project, ProjectId, ReorderFile};
+
+use crate::c2s::*;
+use crate::s2c::*;
+
+#[derive(Clone)]
+pub struct FileCache {
+    src_id: Option<usize>,
+    doc_id: Option<usize>,
+    file: Addr<File>,
+}
+
+impl FileCache {
+    fn id_for(&self, kind: ListenKind) -> Option<usize> {
+        match kind {
+            ListenKind::Src => self.src_id.clone(),
+            ListenKind::Doc => self.doc_id.clone(),
+        }
+    }
+    fn set_id_for(&mut self, kind: ListenKind, v: Option<usize>) {
+        match kind {
+            ListenKind::Src => self.src_id = v,
+            ListenKind::Doc => self.doc_id = v,
+        }
+    }
+}
 
 pub struct Client {
     id: usize,
     hub: Addr<Hub>,
     projects: HashMap<ProjectId, (Option<usize>, Addr<Project>)>,
-    files: HashMap<(ProjectId, FileId), (Option<usize>, Addr<File>)>,
+    files: HashMap<(ProjectId, FileId), FileCache>,
 }
 
 impl Client {
@@ -55,7 +75,6 @@ impl Client {
                 })
                 .map_err(|e, act, ctx| {
                     panic!("{:?}", e);
-                    ()
                 });
             Either::B(f)
         }
@@ -65,7 +84,7 @@ impl Client {
         project_id: ProjectId,
         file_id: FileId,
         ctx: &mut ws::WebsocketContext<Self>,
-    ) -> impl fut::ActorFuture<Actor = Self, Error = (), Item = (Option<usize>, Addr<File>)> {
+    ) -> impl fut::ActorFuture<Actor = Self, Error = (), Item = FileCache> {
         if let Some(p) = self.files.get(&(project_id, file_id)) {
             Either::A(fut::ok(p.clone()))
         } else {
@@ -77,13 +96,16 @@ impl Client {
                 })
                 .map(move |file, act, ctx| {
                     let file = file.expect("file not found");
-                    act.files
-                        .insert((project_id, file_id), (None, file.clone()));
-                    (None, file)
+                    let cache = FileCache {
+                        src_id: None,
+                        doc_id: None,
+                        file: file.clone(),
+                    };
+                    act.files.insert((project_id, file_id), cache.clone());
+                    cache
                 })
                 .map_err(|e, act, ctx| {
                     panic!("{:?}", e);
-                    ()
                 });;
             Either::B(f)
         }
@@ -97,7 +119,7 @@ impl Client {
         self.get_project(project_id, ctx)
             .then(move |res, act, ctx| match res {
                 Ok((id, project)) => {
-                    if let Some(id) = id {
+                    if id.is_some() {
                         Either::A(fut::ok(()))
                     } else {
                         let f = project
@@ -108,7 +130,6 @@ impl Client {
                             })
                             .map_err(|e, act, ctx| {
                                 panic!("{:?}", e);
-                                ()
                             });
                         Either::B(f)
                     }
@@ -127,28 +148,47 @@ impl Client {
                 act.projects.remove(&project_id);
             })
     }
-    pub fn join_file_source(
+    pub fn join_file(
         &mut self,
         project_id: ProjectId,
         file_id: FileId,
+        kind: ListenKind,
         ctx: &mut ws::WebsocketContext<Self>,
     ) -> impl fut::ActorFuture<Actor = Self, Error = (), Item = ()> {
         let my_adder = ctx.address();
         self.get_file(project_id, file_id, ctx)
             .then(move |res, act, ctx| match res {
-                Ok((id, file)) => {
-                    if let Some(id) = id {
+                Ok(cache) => {
+                    if let Some(id) = cache.id_for(kind) {
                         Either::A(fut::ok(()))
                     } else {
-                        let f = file
-                            .send(JoinFile { addr: my_adder })
+                        let f = cache
+                            .file
+                            .send(JoinFile {
+                                addr: my_adder,
+                                kind,
+                            })
                             .into_actor(act)
                             .map(move |id, act, ctx| {
-                                act.files.insert((project_id, file_id), (Some(id), file));
+                                act.files.insert(
+                                    (project_id, file_id),
+                                    FileCache {
+                                        src_id: if kind == ListenKind::Src {
+                                            Some(id)
+                                        } else {
+                                            cache.id_for(ListenKind::Src)
+                                        },
+                                        doc_id: if kind == ListenKind::Doc {
+                                            Some(id)
+                                        } else {
+                                            cache.id_for(ListenKind::Doc)
+                                        },
+                                        file: cache.file,
+                                    },
+                                );
                             })
                             .map_err(|e, act, ctx| {
                                 panic!("{:?}", e);
-                                ()
                             });
                         Either::B(f)
                     }
@@ -156,16 +196,26 @@ impl Client {
                 _ => unimplemented!(),
             })
     }
-    pub fn leave_file_source(
+    pub fn leave_file(
         &mut self,
         project_id: ProjectId,
         file_id: FileId,
+        kind: ListenKind,
         ctx: &mut ws::WebsocketContext<Self>,
     ) -> impl fut::ActorFuture<Actor = Self, Error = (), Item = ()> {
         self.get_file(project_id, file_id, ctx)
-            .map(move |(con, file), act, ctx| {
-                file.do_send(LeaveFile { id: con.unwrap() });
-                act.files.remove(&(project_id, file_id));
+            .map(move |cache, act, ctx| {
+                cache.file.do_send(LeaveFile {
+                    id: cache.id_for(kind).unwrap(),
+                });
+                let remove = {
+                    let f = act.files.get_mut(&(project_id, file_id)).unwrap();
+                    f.set_id_for(kind, None);
+                    f.src_id.or(f.doc_id).is_none()
+                };
+                if remove {
+                    act.files.remove(&(project_id, file_id));
+                }
             })
     }
     pub fn edit_file(
@@ -176,8 +226,29 @@ impl Client {
         ctx: &mut ws::WebsocketContext<Self>,
     ) -> impl fut::ActorFuture<Actor = Self, Error = (), Item = ()> {
         self.get_file(project_id, file_id, ctx)
-            .map(|(con, file), act, ctx| {
-                file.do_send(EditFile { src });
+            .map(move |cache, act, ctx| {
+                cache.file.do_send(EditFile {
+                    src,
+                    ignore: act
+                        .files
+                        .get(&(project_id, file_id))
+                        .and_then(|cache| cache.src_id.clone()),
+                });
+            })
+    }
+    pub fn reorder_file(
+        &mut self,
+        project_id: ProjectId,
+        file_id: FileId,
+        new_index: usize,
+        ctx: &mut ws::WebsocketContext<Self>,
+    ) -> impl fut::ActorFuture<Actor = Self, Error = (), Item = ()> {
+        self.get_project(project_id, ctx)
+            .map(move |(con, project), act, ctx| {
+                project.do_send(ReorderFile {
+                    id: file_id,
+                    new_index,
+                });
             })
     }
 }
@@ -232,21 +303,33 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for Client {
                             let f = self.leave_project(project_id, ctx);
                             ctx.wait(f);
                         }
+                        Client2Server_Project::Reorder {
+                            id: file_id,
+                            new_index,
+                        } => {
+                            let f = self.reorder_file(project_id, file_id, new_index, ctx);
+                            ctx.wait(f);
+                        }
                         Client2Server_Project::File { id: file_id, msg } => match msg {
                             Client2Server_Project_File::JoinFileSource => {
-                                let f = self.join_file_source(project_id, file_id, ctx);
+                                let f = self.join_file(project_id, file_id, ListenKind::Src, ctx);
                                 ctx.wait(f);
                             }
                             Client2Server_Project_File::LeaveFileSource => {
-                                let f = self.leave_file_source(project_id, file_id, ctx);
+                                let f = self.leave_file(project_id, file_id, ListenKind::Src, ctx);
+                                ctx.wait(f);
+                            }
+                            Client2Server_Project_File::JoinFileDoc => {
+                                let f = self.join_file(project_id, file_id, ListenKind::Doc, ctx);
+                                ctx.wait(f);
+                            }
+                            Client2Server_Project_File::LeaveFileDoc => {
+                                let f = self.leave_file(project_id, file_id, ListenKind::Doc, ctx);
                                 ctx.wait(f);
                             }
                             Client2Server_Project_File::EditFileSource { contents } => {
                                 let f = self.edit_file(project_id, file_id, contents, ctx);
                                 ctx.wait(f);
-                            }
-                            _ => {
-                                println!("unhandled file event {:?}", msg);
                             }
                         },
                         _ => {
@@ -280,80 +363,4 @@ impl Handler<Server2Client> for Client {
     fn handle(&mut self, msg: Server2Client, ctx: &mut Self::Context) {
         Client::send(msg, ctx);
     }
-}
-
-#[derive(Serialize)]
-#[serde(tag = "type")]
-pub enum Lock {
-    Unlock,
-    LockBy {},
-    LockByMe,
-}
-
-#[derive(Serialize, Message)]
-#[serde(tag = "type")]
-pub enum Server2Client {
-    Projects {
-        list: Vec<ProjectInfo>,
-    },
-    Project {
-        id: ProjectId,
-        msg: Server2Client_Project,
-    },
-}
-
-#[derive(Serialize)]
-#[serde(tag = "type")]
-pub enum Server2Client_Project {
-    Files {
-        list: Vec<FileInfo>,
-    },
-    File {
-        id: FileId,
-        msg: Server2Client_Project_File,
-    },
-}
-
-#[derive(Serialize)]
-#[serde(tag = "type")]
-pub enum Server2Client_Project_File {
-    FileLock { lock: Lock },
-    FileSource { src: String },
-    FileDoc { doc: Doc },
-}
-
-#[derive(Deserialize, Debug)]
-#[serde(tag = "type")]
-pub enum Client2Server {
-    CreateProject {
-        project_name: String,
-    },
-    Project {
-        id: ProjectId,
-        msg: Client2Server_Project,
-    },
-}
-
-#[derive(Deserialize, Debug)]
-#[serde(tag = "type")]
-pub enum Client2Server_Project {
-    JoinProject,
-    LeaveProject,
-    CreateFile {
-        file_name: String,
-    },
-    File {
-        id: FileId,
-        msg: Client2Server_Project_File,
-    },
-}
-
-#[derive(Deserialize, Debug)]
-#[serde(tag = "type")]
-pub enum Client2Server_Project_File {
-    JoinFileSource,
-    LeaveFileSource,
-    EditFileSource { contents: String },
-    JoinFileDoc,
-    LeaveFileDoc,
 }

@@ -1,8 +1,12 @@
-export const intersparse = <T, S>(xs: T[], y: S): (T | S)[] => {
+export const intersparse = <T, S>(
+  xs: T[],
+  y: (index: number) => S
+): (T | S)[] => {
   const out = [];
+  let i = 0;
   for (const x of xs) {
     out.push(x);
-    out.push(y);
+    out.push(y(i++));
   }
   if (out.length > 0) {
     return out.slice(0, -1);

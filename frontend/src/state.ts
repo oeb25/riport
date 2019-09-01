@@ -5,7 +5,11 @@ import {
   ProjectFiles,
   FileId
 } from "./com/types";
-import { Server2Client } from "./com/s2c";
+import {
+  Server2Client,
+  Server2Client_Project,
+  Server2Client_Project_File
+} from "./com/s2c";
 
 export type State = {
   route: Routes;
@@ -35,20 +39,48 @@ export const initialState: State = {
 
 export type Action =
   | { type: "Server"; msg: Server2Client }
-  | { type: "SetRoute"; route: Routes };
+  | { type: "SetRoute"; route: Routes }
+  | {
+      type: "UpdateFileValue";
+      projectId: ProjectId;
+      fileId: FileId;
+      value: string;
+    };
 
 export const reducer: React.Reducer<State, Action> = (state, action) => {
   switch (action.type) {
     case "SetRoute": {
-      state = { ...state, route: action.route };
-      break;
+      window.location.hash = encodeURIComponent(JSON.stringify(action.route));
+      return { ...state, route: action.route };
     }
     case "Server": {
       return handleServerMsg(state, action.msg);
     }
-  }
+    case "UpdateFileValue": {
+      const projectFiles =
+        state.projectFiles[action.projectId.project_id] || {};
+      const f = projectFiles[action.fileId.file_id] || {
+        doc: null,
+        id: action.fileId,
+        name: "idk",
+        src: action.value
+      };
 
-  return state;
+      return {
+        ...state,
+        projectFiles: {
+          ...state.projectFiles,
+          [action.projectId.project_id]: {
+            ...projectFiles,
+            [action.fileId.file_id]: {
+              ...f,
+              src: action.value
+            }
+          }
+        }
+      };
+    }
+  }
 };
 
 const handleServerMsg = (state: State, msg: Server2Client): State => {
@@ -58,91 +90,7 @@ const handleServerMsg = (state: State, msg: Server2Client): State => {
     }
     case "Project": {
       const { id, msg: msg2 } = msg;
-      switch (msg2.type) {
-        case "Files": {
-          return {
-            ...state,
-            projectFileInfos: {
-              ...state.projectFileInfos,
-              [id.project_id]: msg2.list
-            },
-            projectFiles: {
-              ...state.projectFiles,
-              [id.project_id]: msg2.list.reduce(
-                (acc, f) => {
-                  acc[f.id.file_id] = {
-                    doc: null,
-                    id: f.id,
-                    name: f.name,
-                    src: ""
-                  };
-                  return acc;
-                },
-                {} as ProjectFiles
-              )
-            }
-          };
-        }
-        case "File": {
-          const { id: fileId, msg: msg3 } = msg2;
-          switch (msg3.type) {
-            case "FileSource": {
-              const projectFiles = state.projectFiles[id.project_id] || {};
-              const f = projectFiles[fileId.file_id] || {
-                doc: null,
-                id: fileId,
-                name: "idk",
-                src: msg3.src
-              };
-
-              return {
-                ...state,
-                projectFiles: {
-                  ...state.projectFiles,
-                  [id.project_id]: {
-                    ...projectFiles,
-                    [fileId.file_id]: {
-                      ...f,
-                      src: msg3.src
-                    }
-                  }
-                }
-              };
-            }
-            case "FileDoc": {
-              const projectFiles = state.projectFiles[id.project_id] || {};
-              const f = projectFiles[fileId.file_id] || {
-                doc: msg3.doc,
-                id: fileId,
-                name: "idk",
-                src: ""
-              };
-
-              return {
-                ...state,
-                projectFiles: {
-                  ...state.projectFiles,
-                  [id.project_id]: {
-                    ...projectFiles,
-                    [fileId.file_id]: {
-                      ...f,
-                      doc: msg3.doc
-                    }
-                  }
-                }
-              };
-            }
-            default: {
-              console.log("unhandled file", msg);
-              return state;
-            }
-          }
-        }
-        default: {
-          console.log("unhandled project", msg);
-          return state;
-        }
-      }
+      return handleServerProjectMsg(state, id, msg2);
     }
     default: {
       console.log("unhandled", msg);
@@ -151,7 +99,124 @@ const handleServerMsg = (state: State, msg: Server2Client): State => {
   }
 };
 
-export const findProjectInfo = (state: State, id: ProjectId): ProjectInfo =>
+const handleServerProjectMsg = (
+  state: State,
+  projectId: ProjectId,
+  msg: Server2Client_Project
+): State => {
+  switch (msg.type) {
+    case "UpdateInfo": {
+      return {
+        ...state,
+        projects: state.projects.map(p => {
+          if (p.id.project_id == msg.info.id.project_id) {
+            return msg.info;
+          } else {
+            return p;
+          }
+        })
+      };
+    }
+    case "Files": {
+      return {
+        ...state,
+        projectFileInfos: {
+          ...state.projectFileInfos,
+          [projectId.project_id]: msg.list
+        },
+        projectFiles: {
+          ...state.projectFiles,
+          [projectId.project_id]: msg.list.reduce(
+            (acc, f) => {
+              const pfs = state.projectFiles[projectId.project_id];
+              acc[f.id.file_id] = (pfs && pfs[f.id.file_id]) || {
+                doc: null,
+                id: f.id,
+                name: f.name,
+                src: ""
+              };
+              return acc;
+            },
+            {} as ProjectFiles
+          )
+        }
+      };
+    }
+    case "File": {
+      const { id: fileId, msg: msg2 } = msg;
+      return handleServerProjectFileMsg(state, projectId, fileId, msg2);
+    }
+    default: {
+      console.log("unhandled project", msg);
+      return state;
+    }
+  }
+};
+
+const handleServerProjectFileMsg = (
+  state: State,
+  projectId: ProjectId,
+  fileId: FileId,
+  msg: Server2Client_Project_File
+) => {
+  switch (msg.type) {
+    case "FileSource": {
+      const projectFiles = state.projectFiles[projectId.project_id] || {};
+      const f = projectFiles[fileId.file_id] || {
+        doc: null,
+        id: fileId,
+        name: "idk",
+        src: msg.src
+      };
+
+      return {
+        ...state,
+        projectFiles: {
+          ...state.projectFiles,
+          [projectId.project_id]: {
+            ...projectFiles,
+            [fileId.file_id]: {
+              ...f,
+              src: msg.src
+            }
+          }
+        }
+      };
+    }
+    case "FileDoc": {
+      const projectFiles = state.projectFiles[projectId.project_id] || {};
+      const f = projectFiles[fileId.file_id] || {
+        doc: msg.doc,
+        id: fileId,
+        name: "idk",
+        src: ""
+      };
+
+      return {
+        ...state,
+        projectFiles: {
+          ...state.projectFiles,
+          [projectId.project_id]: {
+            ...projectFiles,
+            [fileId.file_id]: {
+              ...f,
+              doc: msg.doc || f.doc
+            }
+          }
+        }
+      };
+    }
+    default: {
+      console.log("unhandled file", msg);
+      return state;
+    }
+  }
+};
+
+export const findProjectInfo = (
+  state: State,
+  id: ProjectId
+): ProjectInfo | null =>
   state.projects.filter(info => info.id.project_id == id.project_id)[0];
 
 export const getFileName = (
@@ -162,13 +227,11 @@ export const getFileName = (
   if (!c) return null;
 
   const pfs = "route" in c ? c.projectFiles[projectId.project_id] : c;
+  if (!pfs) return null;
 
-  // if (projectId.project_id in projectFiles) {
-  // const pfs = projectFiles[projectId.project_id];
   if (fileId.file_id in pfs) {
     return pfs[fileId.file_id].name;
   }
-  // }
   return null;
 };
 
@@ -184,6 +247,7 @@ export const buildPath = (state: State): PathSegment[] => {
 
   if (route.name == "project") {
     const info = findProjectInfo(state, route.id);
+    if (!info) return path;
     path.push({
       name: info.name,
       route: {
