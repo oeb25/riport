@@ -1,36 +1,36 @@
-import { Mapper } from "../util";
-import { ProjectId, FileId } from "./types";
+import { Mapper } from '../util'
+import { ProjectId, FileId } from './types'
 
 export type Client2Server = Mapper<{
   CreateProject: {
-    project_name: string;
-  };
+    project_name: string
+  }
   Project: {
-    id: ProjectId;
-    msg: Client2Server_Project;
-  };
-}>;
+    id: ProjectId
+    msg: Client2Server_Project
+  }
+}>
 
 export type Client2Server_Project = Mapper<{
-  JoinProject: {};
-  LeaveProject: {};
+  JoinProject: {}
+  LeaveProject: {}
   CreateFile: {
-    file_name: string;
-  };
+    file_name: string
+  }
   Reorder: {
-    id: FileId;
-    new_index: number;
-  };
+    id: FileId
+    new_index: number
+  }
   File: {
-    id: FileId;
-    msg: Client2Server_Project_File;
-  };
-}>;
+    id: FileId
+    msg: Client2Server_Project_File
+  }
+}>
 
 export type Client2Server_Project_File = Mapper<{
-  JoinFileSource: {};
-  LeaveFileSource: {};
-  EditFileSource: { contents: string };
-  JoinFileDoc: {};
-  LeaveFileDoc: {};
-}>;
+  JoinFileSource: {}
+  LeaveFileSource: {}
+  EditFileSource: { contents: string }
+  JoinFileDoc: {}
+  LeaveFileDoc: {}
+}>

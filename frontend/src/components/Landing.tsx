@@ -1,12 +1,12 @@
-import * as React from "react";
+import * as React from 'react'
 
-import { ProjectInfo, ProjectId, SystemTime } from "../com/types";
-import { Client2Server } from "../com/c2s";
+import { ProjectInfo, ProjectId, SystemTime } from '../com/types'
+import { Client2Server } from '../com/c2s'
 
 export const Landing: React.SFC<{
-  projects: ProjectInfo[];
-  selectProject: (projectId: ProjectId) => any;
-  send: (msg: Client2Server) => any;
+  projects: ProjectInfo[]
+  selectProject: (projectId: ProjectId) => any
+  send: (msg: Client2Server) => any
 }> = ({ projects, selectProject, send }) => (
   <div className="flex flex-1 justify-center items-center">
     <div className="flex w-full flex-col mb-10 justify-center items-center">
@@ -18,7 +18,7 @@ export const Landing: React.SFC<{
             className="pl-3 pr-1 hover:text-white"
             href="/"
             onClick={e => {
-              e.preventDefault();
+              e.preventDefault()
             }}
           >
             +
@@ -39,7 +39,7 @@ export const Landing: React.SFC<{
             href="/"
             className="flex p-2 bg-gray-900 text-gray-500 hover:bg-black hover:text-white"
             onClick={e => {
-              e.preventDefault();
+              e.preventDefault()
             }}
           >
             + New Project
@@ -48,26 +48,26 @@ export const Landing: React.SFC<{
       </div>
     </div>
   </div>
-);
+)
 
 const ProjectItem: React.SFC<{
-  info: ProjectInfo;
-  select: () => any;
-  send: (msg: Client2Server) => any;
+  info: ProjectInfo
+  select: () => any
+  send: (msg: Client2Server) => any
 }> = ({ info, select, send }) => {
   React.useEffect(() => {
-    send({ type: "Project", id: info.id, msg: { type: "JoinProject" } });
+    send({ type: 'Project', id: info.id, msg: { type: 'JoinProject' } })
     return () =>
-      send({ type: "Project", id: info.id, msg: { type: "LeaveProject" } });
-  }, [info]);
+      send({ type: 'Project', id: info.id, msg: { type: 'LeaveProject' } })
+  }, [info])
 
   return (
     <a
       href="/"
       className="flex relative py-1 border-b px-2 last:border-b-0 border-gray-600 items-center hover:bg-gray-700"
       onClick={e => {
-        e.preventDefault();
-        select();
+        e.preventDefault()
+        select()
       }}
     >
       <div className="flex flex-1">{info.name}</div>
@@ -92,45 +92,45 @@ const ProjectItem: React.SFC<{
         ></div>
       </div>
     </a>
-  );
-};
+  )
+}
 
 const LiveSince: React.SFC<{ time: number }> = ({ time }) => {
-  const [delta, setDelta] = React.useState(Date.now() - time);
+  const [delta, setDelta] = React.useState(Date.now() - time)
   React.useEffect(() => {
     const i = setInterval(() => {
-      setDelta(Date.now() - time);
-    }, 1000);
-    return () => clearInterval(i);
-  }, [time, setDelta]);
+      setDelta(Date.now() - time)
+    }, 1000)
+    return () => clearInterval(i)
+  }, [time, setDelta])
 
-  return <span>{formatDelta(delta)}</span>;
-};
+  return <span>{formatDelta(delta)}</span>
+}
 
 export const systemTime2Date = (st: SystemTime): Date => {
-  const ms = st.secs_since_epoch * 1000 + st.nanos_since_epoch / 1000000;
-  return new Date(ms);
-};
+  const ms = st.secs_since_epoch * 1000 + st.nanos_since_epoch / 1000000
+  return new Date(ms)
+}
 
-const SECOND_IN_MS = 1000;
-const MINUTE_IN_MS = SECOND_IN_MS * 60;
-const HOUR_IN_MS = MINUTE_IN_MS * 60;
+const SECOND_IN_MS = 1000
+const MINUTE_IN_MS = SECOND_IN_MS * 60
+const HOUR_IN_MS = MINUTE_IN_MS * 60
 
 export const formatDelta = (delta: number) => {
   if (delta > HOUR_IN_MS) {
-    return `${Math.floor(delta / HOUR_IN_MS)} hours ago`;
+    return `${Math.floor(delta / HOUR_IN_MS)} hours ago`
   }
   if (delta > MINUTE_IN_MS) {
-    return `${Math.floor(delta / MINUTE_IN_MS)} min ago`;
+    return `${Math.floor(delta / MINUTE_IN_MS)} min ago`
   }
   if (delta > SECOND_IN_MS * 10) {
-    return `${Math.floor(delta / SECOND_IN_MS)} sec ago`;
+    return `${Math.floor(delta / SECOND_IN_MS)} sec ago`
   }
-  return `Just now`;
-};
+  return `Just now`
+}
 
 export const formatDate = (date: Date) => {
-  const delta = Date.now() - date.valueOf();
+  const delta = Date.now() - date.valueOf()
 
-  return formatDelta(delta);
-};
+  return formatDelta(delta)
+}

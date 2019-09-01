@@ -1,33 +1,33 @@
-import { Fragment } from "../components/Render";
+import { Fragment } from '../components/Render'
 
 export type SystemTime = {
-  secs_since_epoch: number;
-  nanos_since_epoch: number;
-};
+  secs_since_epoch: number
+  nanos_since_epoch: number
+}
 
 export type File = {
-  name: string;
-  id: FileId;
-  src: string;
-  doc: null | Doc;
-};
+  name: string
+  id: FileId
+  src: string
+  doc: null | Doc
+}
 
 export type ProjectFiles = {
-  [file_id: number]: File;
-};
+  [file_id: number]: File
+}
 
-export type ProjectId = { project_id: number };
-export type FileId = { file_id: number };
+export type ProjectId = { project_id: number }
+export type FileId = { file_id: number }
 
 export type ProjectInfo = {
-  name: string;
-  last_changed: SystemTime;
-  id: ProjectId;
-  files: FileId[];
-};
+  name: string
+  last_changed: SystemTime
+  id: ProjectId
+  files: FileId[]
+}
 export type FileInfo = {
-  name: string;
-  last_changed: SystemTime;
-  id: FileId;
-};
-export type Doc = Fragment[];
+  name: string
+  last_changed: SystemTime
+  id: FileId
+}
+export type Doc = Fragment[]

@@ -1,15 +1,15 @@
-import * as React from "react";
-import { socket, SocketProvider } from "../com/socket";
-import { reducer, initialState, Routes, buildPath } from "../state";
-import { StatusBar } from "./StatusBar";
-import { Router } from "./Router";
+import * as React from 'react'
+import { socket, SocketProvider } from '../com/socket'
+import { reducer, initialState, Routes, buildPath } from '../state'
+import { StatusBar } from './StatusBar'
+import { Router } from './Router'
 
 export const App: React.SFC = () => {
-  const [state, dispatch] = React.useReducer(reducer, initialState);
+  const [state, dispatch] = React.useReducer(reducer, initialState)
 
-  const [wsStatus, send] = socket(msg => dispatch({ type: "Server", msg }));
+  const [wsStatus, send] = socket(msg => dispatch({ type: 'Server', msg }))
 
-  const { route } = state;
+  const { route } = state
 
   const changeRoute = (newRoute: Routes) => {
     // if (route.name == "landing" && newRoute.name == "project") {
@@ -19,19 +19,19 @@ export const App: React.SFC = () => {
     //   send({ type: "Project", id: route.id, msg: { type: "LeaveProject" } });
     // }
 
-    dispatch({ type: "SetRoute", route: newRoute });
-  };
+    dispatch({ type: 'SetRoute', route: newRoute })
+  }
 
   React.useEffect(() => {
     let t = setTimeout(() => {
       const hash = JSON.parse(
         decodeURIComponent(window.location.hash.slice(1)) ||
-          '{ "name": "landing" }'
-      );
-      changeRoute(hash);
-    }, 100);
-    return () => clearTimeout(t);
-  }, [wsStatus.type]);
+          '{ "name": "landing" }',
+      )
+      changeRoute(hash)
+    }, 100)
+    return () => clearTimeout(t)
+  }, [wsStatus.type])
 
   return (
     <SocketProvider wsStatus={wsStatus}>
@@ -49,28 +49,28 @@ export const App: React.SFC = () => {
             send={send}
             editFile={(projectId, fileId, value) => {
               dispatch({
-                type: "UpdateFileValue",
+                type: 'UpdateFileValue',
                 projectId,
                 fileId,
-                value
-              });
+                value,
+              })
 
               send({
-                type: "Project",
+                type: 'Project',
                 id: projectId,
                 msg: {
-                  type: "File",
+                  type: 'File',
                   id: fileId,
                   msg: {
-                    type: "EditFileSource",
-                    contents: value
-                  }
-                }
-              });
+                    type: 'EditFileSource',
+                    contents: value,
+                  },
+                },
+              })
             }}
           />
         </div>
       </div>
     </SocketProvider>
-  );
-};
+  )
+}

@@ -1,20 +1,20 @@
-import * as React from "react";
-import * as ReactDOM from "react-dom";
+import * as React from 'react'
+import * as ReactDOM from 'react-dom'
 
 export function List<T>(
   props: React.Props<{}> & {
-    title: React.ReactNode;
-    items: T[];
-    keyer: (t: T, i: number) => string | number;
-    render: (t: T, i: number) => React.ReactNode;
-    select: (t: T, i: number) => any;
-    isSelected: (t: T, i: number) => boolean;
-    reorder: (t: T, from: number, to: number) => any;
-    footer?: React.ReactNode;
-  }
+    title: React.ReactNode
+    items: T[]
+    keyer: (t: T, i: number) => string | number
+    render: (t: T, i: number) => React.ReactNode
+    select: (t: T, i: number) => any
+    isSelected: (t: T, i: number) => boolean
+    reorder: (t: T, from: number, to: number) => any
+    footer?: React.ReactNode
+  },
 ) {
-  const [drag, setDrag] = React.useState<null | number>(null);
-  const [dragOver, setDragOver] = React.useState<null | number>(null);
+  const [drag, setDrag] = React.useState<null | number>(null)
+  const [dragOver, setDragOver] = React.useState<null | number>(null)
 
   return (
     <div className="bg-gray-900 flex flex-col flex-1 shadow flex-shrink w-full max-w-md rounded">
@@ -24,7 +24,7 @@ export function List<T>(
           className="pl-3 pr-1 hover:text-white"
           href="/"
           onClick={e => {
-            e.preventDefault();
+            e.preventDefault()
           }}
         >
           +
@@ -36,21 +36,21 @@ export function List<T>(
             <a
               onDrag={() => {
                 // console.log("onDrag", e);
-                setDrag(i);
+                setDrag(i)
               }}
               onDragEnd={() => {
                 if (drag != null && dragOver != null && drag != dragOver) {
-                  props.reorder(props.items[drag], drag, dragOver);
+                  props.reorder(props.items[drag], drag, dragOver)
                 }
               }}
               key={props.keyer(item, i)}
               href="/"
               className={`flex relative py-1 border-b px-2 last:border-b-0 border-gray-600 items-center hover:bg-gray-700 ${
-                props.isSelected(item, i) ? "bg-gray-700" : ""
+                props.isSelected(item, i) ? 'bg-gray-700' : ''
               }`}
               onClick={e => {
-                e.preventDefault();
-                props.select(item, i);
+                e.preventDefault()
+                props.select(item, i)
               }}
             >
               <div className="flex flex-1">{props.render(item, i)}</div>
@@ -59,14 +59,14 @@ export function List<T>(
                   className="flex flex-1"
                   onDragOver={e => {
                     // console.log("onDragOver TOP", i);
-                    setDragOver(i);
+                    setDragOver(i)
                   }}
                 ></div>
                 <div
                   className="flex flex-1"
                   onDragOver={e => {
                     // console.log("onDragOver BOTTOM", i);
-                    setDragOver(i + 1);
+                    setDragOver(i + 1)
                   }}
                 ></div>
               </div>
@@ -78,7 +78,7 @@ export function List<T>(
             href="/"
             className="flex p-2 bg-gray-900 text-gray-500 hover:bg-black hover:text-white"
             onClick={e => {
-              e.preventDefault();
+              e.preventDefault()
             }}
           >
             {props.footer}
@@ -86,5 +86,5 @@ export function List<T>(
         )}
       </div>
     </div>
-  );
+  )
 }
