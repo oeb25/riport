@@ -95,7 +95,7 @@ export const ProjectScreen: React.SFC<{
     const t = setTimeout(() => {
       // resize
       stop = true
-    }, 200)
+    }, 500)
 
     loop()
 
@@ -103,7 +103,7 @@ export const ProjectScreen: React.SFC<{
       clearTimeout(t)
       stop = true
     }
-  }, [selectedFile && selectedFile.file_id])
+  }, [selectedFile && selectedFile.file_id, f && f.id.file_id])
 
   React.useEffect(() => {
     const resize = () => {

@@ -23,6 +23,7 @@ export const App: React.SFC = () => {
   }
 
   React.useEffect(() => {
+    // TODO: Fix bug wuen instant change route
     let t = setTimeout(() => {
       const hash = JSON.parse(
         decodeURIComponent(window.location.hash.slice(1)) ||

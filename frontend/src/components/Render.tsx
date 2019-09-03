@@ -23,6 +23,7 @@ export type Fragment =
   | { t: 'Header'; c: [1 | 2 | 3 | 4 | 5 | 6, [string, [], []], Fragment[]] }
   | { t: 'Quoted'; c: Fragment[] }
   | { t: 'SoftBreak' }
+  | { t: 'HorizontalRule' }
   | { t: 'Emph'; c: Fragment[] }
   | { t: 'Strong'; c: Fragment[] }
   | {
@@ -86,6 +87,8 @@ export const Render: React.SFC<{
     return <> </>
   } else if (src.t == 'SoftBreak') {
     return <br />
+  } else if (src.t == 'HorizontalRule') {
+    return <hr />
   } else if (src.t == 'Quoted') {
     return <>"{JSON.stringify(src)}"</>
   } else if (src.t == 'Emph') {

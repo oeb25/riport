@@ -59,8 +59,11 @@ export const socket = (
       wsStatus.type == 'INITIAL'
     ) {
       try {
-        const ws = new WebSocket('ws://0.0.0.0:8000/ws/')
+        const ws = new WebSocket('ws://0.0.0.0:8080/ws/')
         setWsStatus({ type: 'CONNECTING', ws })
+        window.addEventListener('beforeunload', () => {
+          ws.close()
+        })
       } catch (e) {
         setWsStatus({ type: 'ERROR', ws })
       }
