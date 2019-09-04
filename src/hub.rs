@@ -1,7 +1,11 @@
 use actix::*;
 use futures::future::join_all;
 use futures::prelude::*;
+
 use std::collections::HashMap;
+use std::fs;
+use std::io;
+use std::path::PathBuf;
 
 use crate::client::Client;
 use crate::project::{GetInfo, Project, ProjectId, ProjectInfo};
@@ -9,23 +13,41 @@ use crate::project::{GetInfo, Project, ProjectId, ProjectInfo};
 use crate::s2c::*;
 
 pub struct Hub {
+    projects_path: PathBuf,
     connections: Vec<Option<Addr<Client>>>,
     projects: HashMap<ProjectId, Addr<Project>>,
 }
 
-impl Default for Hub {
-    fn default() -> Hub {
+impl Hub {
+    pub fn new(projects_path: PathBuf) -> io::Result<Hub> {
         let mut hub = Hub {
+            projects_path,
             connections: vec![],
             projects: HashMap::new(),
         };
-        hub.create_project("Sample Project".to_string());
-        hub.create_project("Another Project".to_string());
-        hub
-    }
-}
 
-impl Hub {
+        fs::create_dir_all(&hub.projects_path)?;
+
+        for e in fs::read_dir(&hub.projects_path)? {
+            let e = e?;
+            let path = e.path();
+            if path.is_dir() {
+                let name = path.file_name().unwrap().to_string_lossy().to_string();
+                let path = hub.projects_path.join(&name);
+                hub.load_project(name, path);
+            } else {
+                // TODO
+            }
+        }
+
+        // hub.create_project("Sample Project".to_string());
+        // // hub.create_project("Another Project".to_string());
+        // hub.load_project(
+        //     "Another Project".to_string(),
+        //     PathBuf::from("./tmp/Another Project"),
+        // );
+        Ok(hub)
+    }
     fn generate_project_info_list(
         &mut self,
         _: &mut Context<Self>,
@@ -43,7 +65,18 @@ impl Hub {
         let id = ProjectId {
             project_id: self.projects.len() as i64,
         };
-        let project = Project::new(id, name);
+        let path = self.projects_path.join(&name);
+        let project = Project::new(id, name, path);
+        self.projects.insert(id, project.clone());
+
+        (id, project)
+    }
+    fn load_project(&mut self, name: String, path: PathBuf) -> (ProjectId, Addr<Project>) {
+        println!("loading project at {:?}", path);
+        let id = ProjectId {
+            project_id: self.projects.len() as i64,
+        };
+        let project = Project::read_from_disk(path.to_owned());
         self.projects.insert(id, project.clone());
 
         (id, project)
@@ -73,11 +106,9 @@ impl Handler<Connect> for Hub {
         let id = self.connections.len();
         self.connections.push(Some(msg.adder.clone()));
 
-        println!("bount to generate");
         self.generate_project_info_list(ctx)
             .into_actor(self)
             .then(move |res, _act, _| {
-                println!("generated");
                 match res {
                     Ok(list) => msg.adder.do_send(Server2Client::Projects { list }),
                     _ => {}
@@ -86,7 +117,6 @@ impl Handler<Connect> for Hub {
                 fut::ok(())
             })
             .wait(ctx);
-        println!("after");
 
         ConnectRes { id }
     }

@@ -3,6 +3,9 @@ use pandoc_types::definition::Block;
 
 use serde::{Deserialize, Serialize};
 
+use std::fs;
+use std::io;
+use std::path::PathBuf;
 use std::time::SystemTime;
 
 use crate::client::Client;
@@ -60,6 +63,12 @@ impl File {
         let doc = crate::doc::compile(&self.src, &tmp).expect("failed to compile");
         self.doc = Some(doc.1);
     }
+    fn msg(&self, msg: Server2Client_Project_File) -> Server2Client {
+        Server2Client::Project {
+            id: self.project_id,
+            msg: Server2Client_Project::File { id: self.id, msg },
+        }
+    }
 }
 
 impl Actor for File {
@@ -85,9 +94,9 @@ impl Handler<GetInfo> for File {
 
 #[derive(Serialize, MessageResponse)]
 pub struct FileInfo {
-    name: String,
-    last_changed: SystemTime,
-    id: FileId,
+    pub name: String,
+    pub last_changed: SystemTime,
+    pub id: FileId,
 }
 
 pub struct JoinFile {
@@ -107,21 +116,15 @@ impl Handler<JoinFile> for File {
         self.listeners
             .push(Some((join.kind, join.addr.downgrade())));
 
-        join.addr.do_send(Server2Client::Project {
-            id: self.project_id,
-            msg: Server2Client_Project::File {
-                id: self.id,
-                msg: if join.kind == ListenKind::Src {
-                    Server2Client_Project_File::FileSource {
-                        src: self.src.clone(),
-                    }
-                } else {
-                    Server2Client_Project_File::FileDoc {
-                        doc: self.doc.clone().unwrap_or(vec![]),
-                    }
-                },
-            },
-        });
+        join.addr.do_send(self.msg(if join.kind == ListenKind::Src {
+            Server2Client_Project_File::FileSource {
+                src: self.src.clone(),
+            }
+        } else {
+            Server2Client_Project_File::FileDoc {
+                doc: self.doc.clone().unwrap_or(vec![]),
+            }
+        }));
 
         id
     }
@@ -171,15 +174,9 @@ impl Handler<EditFile> for File {
             if *kind != ListenKind::Src {
                 continue;
             }
-            let msg = Server2Client::Project {
-                id: self.project_id,
-                msg: Server2Client_Project::File {
-                    id: self.id,
-                    msg: Server2Client_Project_File::FileSource {
-                        src: self.src.clone(),
-                    },
-                },
-            };
+            let msg = self.msg(Server2Client_Project_File::FileSource {
+                src: self.src.clone(),
+            });
             if let Some(l) = l.upgrade() {
                 l.do_send(msg)
             } else {
@@ -197,20 +194,32 @@ impl Handler<EditFile> for File {
             if *kind != ListenKind::Doc {
                 continue;
             }
-            let msg = Server2Client::Project {
-                id: self.project_id,
-                msg: Server2Client_Project::File {
-                    id: self.id,
-                    msg: Server2Client_Project_File::FileDoc {
-                        doc: self.doc.clone().unwrap(),
-                    },
-                },
-            };
+            let msg = self.msg(Server2Client_Project_File::FileDoc {
+                doc: self.doc.clone().unwrap(),
+            });
             if let Some(l) = l.upgrade() {
                 l.do_send(msg)
             } else {
                 // TODO: Remove dead listeners
             }
         }
+    }
+}
+
+pub struct WriteToDisk {
+    pub dir: PathBuf,
+}
+
+impl Message for WriteToDisk {
+    type Result = io::Result<PathBuf>;
+}
+
+impl Handler<WriteToDisk> for File {
+    type Result = io::Result<PathBuf>;
+
+    fn handle(&mut self, wtd: WriteToDisk, _: &mut Context<Self>) -> io::Result<PathBuf> {
+        let p = wtd.dir.join(&self.name).with_extension("md");
+        fs::write(&p, &self.src)?;
+        Ok(p)
     }
 }
