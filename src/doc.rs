@@ -31,6 +31,10 @@ impl<'a> crate::walk_pandoc::Walk for RunPython<'a> {
     fn block(&mut self, block: Block) -> Vec<Block> {
         match block {
             Block::CodeBlock(attr, src) => {
+                // TODO: OOB
+                if attr.1.len() == 0 {
+                    return vec![Block::CodeBlock(attr.clone(), src)];
+                }
                 let lang = &attr.1[0];
                 if lang == "python" {
                     let mut cmd = Command::new("python")
