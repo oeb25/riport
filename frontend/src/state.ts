@@ -7,8 +7,8 @@ import {
 } from './com/types'
 import {
   Server2Client,
-  Server2Client_Project,
-  Server2Client_Project_File,
+  Server2ClientProject,
+  Server2ClientProjectFile,
 } from './com/s2c'
 
 export type State = {
@@ -27,7 +27,16 @@ export type Routes =
   | {
       name: 'project'
       id: ProjectId
-      file?: FileId
+    }
+  | {
+      name: 'project'
+      id: ProjectId
+      config: true
+    }
+  | {
+      name: 'project'
+      id: ProjectId
+      file: FileId
     }
 
 export const initialState: State = {
@@ -101,7 +110,7 @@ const handleServerMsg = (state: State, msg: Server2Client): State => {
 const handleServerProjectMsg = (
   state: State,
   projectId: ProjectId,
-  msg: Server2Client_Project,
+  msg: Server2ClientProject,
 ): State => {
   switch (msg.type) {
     case 'UpdateInfo': {
@@ -156,7 +165,7 @@ const handleServerProjectFileMsg = (
   state: State,
   projectId: ProjectId,
   fileId: FileId,
-  msg: Server2Client_Project_File,
+  msg: Server2ClientProjectFile,
 ) => {
   switch (msg.type) {
     case 'FileSource': {
@@ -254,7 +263,7 @@ export const buildPath = (state: State): PathSegment[] => {
         id: info.id,
       },
     })
-    if (route.file) {
+    if ('file' in route) {
       path.push({
         name: getFileName(state, route.id, route.file) || '???',
         route: {

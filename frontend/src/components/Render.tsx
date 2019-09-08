@@ -8,6 +8,7 @@ import 'prismjs/components/prism-rust'
 
 // import "prismjs/themes/prism-coy.css";
 import 'prismjs/themes/prism-dark.css'
+import { FileId } from '../com/types'
 // import "prismjs/themes/prism-funky.css";
 // import "prismjs/themes/prism-okaidia.css";
 // import "prismjs/themes/prism-solarizedlight.css";
@@ -45,10 +46,13 @@ export type Fragment =
 
 export const Render: React.SFC<{
   staticUrl: (src: string) => string
+  fileId: FileId
   src: Fragment[] | Fragment
-}> = ({ src, staticUrl }) => {
+}> = ({ src, fileId, staticUrl }) => {
   const propagate = (c: Fragment[]) =>
-    c.map((b, i) => <Render key={i} staticUrl={staticUrl} src={b} />)
+    c.map((b, i) => (
+      <Render key={i} fileId={fileId} staticUrl={staticUrl} src={b} />
+    ))
 
   if (Array.isArray(src)) {
     return <>{propagate(src)}</>
@@ -101,7 +105,9 @@ export const Render: React.SFC<{
     return <code className="inline">{src.c[1]}</code>
   } else if (src.t == 'Image') {
     return (
-      <span className="flex items-center justify-center m-5">
+      <span
+        className={`flex items-center justify-center m-5 ${fileId.file_id}`}
+      >
         <img src={staticUrl(src.c[2][0])} />
       </span>
     )

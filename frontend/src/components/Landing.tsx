@@ -2,6 +2,7 @@ import * as React from 'react'
 
 import { ProjectInfo, ProjectId, SystemTime } from '../com/types'
 import { Client2Server } from '../com/c2s'
+import { List } from './List'
 
 export const Landing: React.SFC<{
   projects: ProjectInfo[]
@@ -11,50 +12,25 @@ export const Landing: React.SFC<{
   <div className="flex flex-1 justify-center items-center">
     <div className="flex w-full flex-col mb-10 justify-center items-center">
       <h1 className="text-5xl border-b mb-5 px-5 italic">Riport</h1>
-      <div className="bg-gray-900 shadow flex-shrink w-full max-w-md rounded">
-        <div className="flex p-2 border-b text-gray-500">
-          <p className="flex-1 text-gray-500">Projects ({projects.length})</p>
-          <a
-            className="pl-3 pr-1 hover:text-white"
-            href="/"
-            onClick={e => {
-              e.preventDefault()
-            }}
-          >
-            +
-          </a>
-        </div>
-        <div className="flex flex-col bg-gray-800">
-          <div className="flex flex-col">
-            {projects.map(info => (
-              <ProjectItem
-                key={info.id.project_id}
-                info={info}
-                select={() => selectProject(info.id)}
-                send={send}
-              />
-            ))}
-          </div>
-          <a
-            href="/"
-            className="flex p-2 bg-gray-900 text-gray-500 hover:bg-black hover:text-white"
-            onClick={e => {
-              e.preventDefault()
-            }}
-          >
-            + New Project
-          </a>
-        </div>
-      </div>
+
+      <List
+        items={projects}
+        title={`Projects (${projects.length})`}
+        keyer={info => info.id.project_id}
+        render={info => <ProjectListItem info={info} send={send} />}
+        select={info => selectProject(info.id)}
+        isSelected={info => false}
+        reorder={() => {}}
+        footer="+ New Project"
+      />
     </div>
   </div>
 )
 
-const ProjectItem: React.SFC<{
+const ProjectListItem: React.SFC<{
   info: ProjectInfo
-  select: () => any
   send: (msg: Client2Server) => any
-}> = ({ info, select, send }) => {
+}> = ({ info, send }) => {
   React.useEffect(() => {
     send({ type: 'Project', id: info.id, msg: { type: 'JoinProject' } })
     return () =>
@@ -62,36 +38,15 @@ const ProjectItem: React.SFC<{
   }, [info])
 
   return (
-    <a
-      href="/"
-      className="flex relative py-1 border-b px-2 last:border-b-0 border-gray-600 items-center hover:bg-gray-700"
-      onClick={e => {
-        e.preventDefault()
-        select()
-      }}
-    >
-      <div className="flex flex-1">{info.name}</div>
+    <>
+      <div className="flex flex-1 items-center">{info.name}</div>
       <div className="text-right">
         <div className="text-gray-600 text-xs">Last edit:</div>
         <div className="text-gray-500 text-sm">
           <LiveSince time={systemTime2Date(info.last_changed).valueOf()} />
         </div>
       </div>
-      <div className="flex flex-col absolute top-0 left-0 bottom-0 right-0">
-        <div
-          className="flex flex-1"
-          onDragOver={e => {
-            // console.log("onDragOver TOP", i);
-          }}
-        ></div>
-        <div
-          className="flex flex-1"
-          onDragOver={e => {
-            // console.log("onDragOver BOTTOM", i);
-          }}
-        ></div>
-      </div>
-    </a>
+    </>
   )
 }
 

@@ -26,7 +26,7 @@ pub trait Walk {
     }
 }
 
-pub fn walk_block<W: Walk>(walker: &mut W, block: Block) -> Vec<Block> {
+pub fn walk_block(walker: &mut dyn Walk, block: Block) -> Vec<Block> {
     walker
         .block(block)
         .into_iter()
@@ -46,7 +46,7 @@ pub fn walk_block<W: Walk>(walker: &mut W, block: Block) -> Vec<Block> {
         .collect()
 }
 
-pub fn walk_inline<W: Walk>(walker: &mut W, inline: Inline) -> Vec<Inline> {
+pub fn walk_inline(walker: &mut dyn Walk, inline: Inline) -> Vec<Inline> {
     walker
         .inline(inline)
         .into_iter()
@@ -67,7 +67,7 @@ pub fn walk_inline<W: Walk>(walker: &mut W, inline: Inline) -> Vec<Inline> {
         .collect()
 }
 
-pub fn walk_pandoc<W: Walk>(walker: &mut W, pandoc: Pandoc) -> Pandoc {
+pub fn walk_pandoc(walker: &mut dyn Walk, pandoc: Pandoc) -> Pandoc {
     Pandoc(
         pandoc.0,
         pandoc

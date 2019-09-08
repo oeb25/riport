@@ -21,13 +21,13 @@ pub enum Server2Client {
     },
     Project {
         id: ProjectId,
-        msg: Server2Client_Project,
+        msg: Server2ClientProject,
     },
 }
 
 #[derive(Serialize)]
 #[serde(tag = "type")]
-pub enum Server2Client_Project {
+pub enum Server2ClientProject {
     Files {
         list: Vec<FileInfo>,
     },
@@ -36,13 +36,13 @@ pub enum Server2Client_Project {
     },
     File {
         id: FileId,
-        msg: Server2Client_Project_File,
+        msg: Server2ClientProjectFile,
     },
 }
 
 #[derive(Serialize)]
 #[serde(tag = "type")]
-pub enum Server2Client_Project_File {
+pub enum Server2ClientProjectFile {
     FileLock { lock: Lock },
     FileSource { src: String },
     FileDoc { doc: Doc },

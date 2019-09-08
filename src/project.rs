@@ -17,7 +17,7 @@ use crate::s2c::*;
 
 #[derive(PartialEq, Eq, Hash, Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct ProjectId {
-    pub project_id: i64,
+    pub project_id: u64,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -35,10 +35,11 @@ pub struct Project {
     pub order: Vec<FileId>,
     pub files: HashMap<FileId, Addr<File>>,
     pub listeners: Vec<Option<WeakAddr<Client>>>,
+    pub tmpdir: PathBuf,
 }
 
 impl Project {
-    pub fn empty(id: ProjectId, name: String, path: PathBuf) -> Project {
+    pub fn empty(id: ProjectId, name: String, path: PathBuf, tmpdir: PathBuf) -> Project {
         Project {
             id,
             name,
@@ -47,11 +48,12 @@ impl Project {
             order: vec![],
             files: HashMap::new(),
             listeners: vec![],
+            tmpdir,
         }
     }
-    pub fn new(id: ProjectId, name: String, path: PathBuf) -> Addr<Project> {
+    pub fn new(id: ProjectId, name: String, path: PathBuf, tmpdir: PathBuf) -> Addr<Project> {
         Project::create(move |ctx| {
-            let mut project = Project::empty(id, name, path);
+            let mut project = Project::empty(id, name, path, tmpdir);
             project.new_file("index.md".to_string(), "# Index".to_string(), ctx);
             project.new_file("abstract.md".to_string(), "# Abstract".to_string(), ctx);
             project.new_file("conlusion.md".to_string(), "# Conlusion".to_string(), ctx);
@@ -74,9 +76,18 @@ impl Project {
         ctx: &mut Context<Self>,
     ) -> (FileId, Addr<File>) {
         let id = FileId {
-            file_id: self.files.len() as i64,
+            file_id: self.files.len() as _,
         };
-        let file = File::new(id, self.id, ctx.address().downgrade(), name, src);
+        let file_tmpdir = self.tmpdir.join(&format!("{}", id.file_id));
+        fs::create_dir_all(&file_tmpdir).unwrap();
+        let file = File::new(
+            id,
+            self.id,
+            ctx.address().downgrade(),
+            name,
+            src,
+            file_tmpdir,
+        );
         let file_addr = file.start();
         self.files.insert(id, file_addr.clone());
         self.order.push(id);
@@ -152,13 +163,17 @@ impl Project {
             Ok(())
         })
     }
-    pub fn read_from_disk(dir: PathBuf) -> Addr<Project> {
-        pub fn helper(dir: PathBuf, ctx: &mut Context<Project>) -> io::Result<Project> {
+    pub fn read_from_disk(dir: PathBuf, tmpdir: PathBuf) -> Addr<Project> {
+        pub fn helper(
+            dir: PathBuf,
+            ctx: &mut Context<Project>,
+            tmpdir: PathBuf,
+        ) -> io::Result<Project> {
             let config = fs::read_to_string(dir.join("config.json"))?;
             let config: ProjectConfig =
                 serde_json::from_str(&config).expect("failed to parse project config");
 
-            let mut project = Project::empty(config.id, config.name, dir);
+            let mut project = Project::empty(config.id, config.name, dir, tmpdir);
 
             for path in config.order {
                 let name = path.file_stem().unwrap().to_string_lossy().to_string();
@@ -174,7 +189,7 @@ impl Project {
             Ok(project)
         }
 
-        Project::create(move |ctx| helper(dir, ctx).unwrap())
+        Project::create(move |ctx| helper(dir, ctx, tmpdir).unwrap())
     }
 }
 
@@ -226,7 +241,7 @@ impl Handler<JoinProject> for Project {
                 Ok(list) => {
                     join.addr.do_send(Server2Client::Project {
                         id: project_id,
-                        msg: Server2Client_Project::Files { list },
+                        msg: Server2ClientProject::Files { list },
                     });
                     fut::ok(())
                 }
@@ -292,7 +307,7 @@ impl Handler<FileChanged> for Project {
         {
             l.do_send(Server2Client::Project {
                 id: self.id,
-                msg: Server2Client_Project::UpdateInfo { info: info.clone() },
+                msg: Server2ClientProject::UpdateInfo { info: info.clone() },
             });
         }
 
@@ -348,7 +363,7 @@ impl Handler<ReorderFile> for Project {
         {
             l.do_send(Server2Client::Project {
                 id: self.id,
-                msg: Server2Client_Project::UpdateInfo { info: info.clone() },
+                msg: Server2ClientProject::UpdateInfo { info: info.clone() },
             });
         }
     }

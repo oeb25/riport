@@ -295,39 +295,39 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for Client {
                         id: project_id,
                         msg,
                     } => match msg {
-                        Client2Server_Project::JoinProject => {
+                        Client2ServerProject::JoinProject => {
                             let f = self.join_project(project_id, ctx);
                             ctx.wait(f);
                         }
-                        Client2Server_Project::LeaveProject => {
+                        Client2ServerProject::LeaveProject => {
                             let f = self.leave_project(project_id, ctx);
                             ctx.wait(f);
                         }
-                        Client2Server_Project::Reorder {
+                        Client2ServerProject::Reorder {
                             id: file_id,
                             new_index,
                         } => {
                             let f = self.reorder_file(project_id, file_id, new_index, ctx);
                             ctx.wait(f);
                         }
-                        Client2Server_Project::File { id: file_id, msg } => match msg {
-                            Client2Server_Project_File::JoinFileSource => {
+                        Client2ServerProject::File { id: file_id, msg } => match msg {
+                            Client2ServerProjectFile::JoinFileSource => {
                                 let f = self.join_file(project_id, file_id, ListenKind::Src, ctx);
                                 ctx.wait(f);
                             }
-                            Client2Server_Project_File::LeaveFileSource => {
+                            Client2ServerProjectFile::LeaveFileSource => {
                                 let f = self.leave_file(project_id, file_id, ListenKind::Src, ctx);
                                 ctx.wait(f);
                             }
-                            Client2Server_Project_File::JoinFileDoc => {
+                            Client2ServerProjectFile::JoinFileDoc => {
                                 let f = self.join_file(project_id, file_id, ListenKind::Doc, ctx);
                                 ctx.wait(f);
                             }
-                            Client2Server_Project_File::LeaveFileDoc => {
+                            Client2ServerProjectFile::LeaveFileDoc => {
                                 let f = self.leave_file(project_id, file_id, ListenKind::Doc, ctx);
                                 ctx.wait(f);
                             }
-                            Client2Server_Project_File::EditFileSource { contents } => {
+                            Client2ServerProjectFile::EditFileSource { contents } => {
                                 let f = self.edit_file(project_id, file_id, contents, ctx);
                                 ctx.wait(f);
                             }

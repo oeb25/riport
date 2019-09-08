@@ -17,7 +17,7 @@ pub type Doc = Vec<Block>;
 
 #[derive(PartialEq, Eq, Hash, Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct FileId {
-    pub file_id: i64,
+    pub file_id: u64,
 }
 
 #[derive(PartialEq, Eq, Debug, Clone, Copy)]
@@ -34,6 +34,7 @@ pub struct File {
     pub src: String,
     pub doc: Option<Doc>,
     pub listeners: Vec<Option<(ListenKind, WeakAddr<Client>)>>,
+    pub tmpdir: PathBuf,
 }
 
 impl File {
@@ -43,6 +44,7 @@ impl File {
         project: WeakAddr<Project>,
         name: String,
         src: String,
+        tmpdir: PathBuf,
     ) -> File {
         let mut file = File {
             id,
@@ -52,21 +54,19 @@ impl File {
             src,
             doc: None,
             listeners: vec![],
+            tmpdir,
         };
         file.compile();
         file
     }
     pub fn compile(&mut self) {
-        let tmp = std::path::PathBuf::from("./tmp");
-        std::fs::create_dir_all(&tmp).expect("failed to create run dir");
-
-        let doc = crate::doc::compile(&self.src, &tmp).expect("failed to compile");
+        let doc = crate::doc::compile(&self.src, &self.tmpdir).expect("failed to compile");
         self.doc = Some(doc.1);
     }
-    fn msg(&self, msg: Server2Client_Project_File) -> Server2Client {
+    fn msg(&self, msg: Server2ClientProjectFile) -> Server2Client {
         Server2Client::Project {
             id: self.project_id,
-            msg: Server2Client_Project::File { id: self.id, msg },
+            msg: Server2ClientProject::File { id: self.id, msg },
         }
     }
 }
@@ -117,11 +117,11 @@ impl Handler<JoinFile> for File {
             .push(Some((join.kind, join.addr.downgrade())));
 
         join.addr.do_send(self.msg(if join.kind == ListenKind::Src {
-            Server2Client_Project_File::FileSource {
+            Server2ClientProjectFile::FileSource {
                 src: self.src.clone(),
             }
         } else {
-            Server2Client_Project_File::FileDoc {
+            Server2ClientProjectFile::FileDoc {
                 doc: self.doc.clone().unwrap_or(vec![]),
             }
         }));
@@ -174,7 +174,7 @@ impl Handler<EditFile> for File {
             if *kind != ListenKind::Src {
                 continue;
             }
-            let msg = self.msg(Server2Client_Project_File::FileSource {
+            let msg = self.msg(Server2ClientProjectFile::FileSource {
                 src: self.src.clone(),
             });
             if let Some(l) = l.upgrade() {
@@ -194,7 +194,7 @@ impl Handler<EditFile> for File {
             if *kind != ListenKind::Doc {
                 continue;
             }
-            let msg = self.msg(Server2Client_Project_File::FileDoc {
+            let msg = self.msg(Server2ClientProjectFile::FileDoc {
                 doc: self.doc.clone().unwrap(),
             });
             if let Some(l) = l.upgrade() {

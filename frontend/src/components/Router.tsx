@@ -3,7 +3,7 @@ import { State, Routes, findProjectInfo } from '../state'
 import { Client2Server } from '../com/c2s'
 import { ProjectId, FileId } from '../com/types'
 import { Landing } from './Landing'
-import { ProjectScreen } from './ProjectScreen'
+import { ProjectScreen, ProjectInfoContext } from './ProjectScreen'
 
 export const Router: React.SFC<{
   state: State
@@ -26,19 +26,23 @@ export const Router: React.SFC<{
     }
     case 'project': {
       return (
-        <ProjectScreen
-          info={findProjectInfo(state, route.id)}
-          fileInfos={state.projectFileInfos[route.id.project_id] || {}}
-          files={state.projectFiles[route.id.project_id]}
-          send={send}
-          selectFile={id => {
-            changeRoute({ name: 'project', id: route.id, file: id })
-          }}
-          selectedFile={route.file || null}
-          editFile={(id, value) => {
-            editFile(route.id, id, value)
-          }}
-        />
+        <ProjectInfoContext.Provider value={findProjectInfo(state, route.id)}>
+          <ProjectScreen
+            fileInfos={state.projectFileInfos[route.id.project_id] || {}}
+            files={state.projectFiles[route.id.project_id]}
+            send={send}
+            selectConfig={() => {
+              changeRoute({ name: 'project', id: route.id, config: true })
+            }}
+            selectFile={id => {
+              changeRoute({ name: 'project', id: route.id, file: id })
+            }}
+            selectedFile={'file' in route ? route.file : null}
+            editFile={(id, value) => {
+              editFile(route.id, id, value)
+            }}
+          />
+        </ProjectInfoContext.Provider>
       )
     }
   }

@@ -7,11 +7,11 @@ export type Client2Server = Mapper<{
   }
   Project: {
     id: ProjectId
-    msg: Client2Server_Project
+    msg: Client2ServerProject
   }
 }>
 
-export type Client2Server_Project = Mapper<{
+export type Client2ServerProject = Mapper<{
   JoinProject: {}
   LeaveProject: {}
   CreateFile: {
@@ -23,11 +23,11 @@ export type Client2Server_Project = Mapper<{
   }
   File: {
     id: FileId
-    msg: Client2Server_Project_File
+    msg: Client2ServerProjectFile
   }
 }>
 
-export type Client2Server_Project_File = Mapper<{
+export type Client2ServerProjectFile = Mapper<{
   JoinFileSource: {}
   LeaveFileSource: {}
   EditFileSource: { contents: string }

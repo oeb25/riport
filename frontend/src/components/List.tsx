@@ -16,7 +16,7 @@ export function List<T>(
   const [dragOver, setDragOver] = React.useState<null | number>(null)
 
   return (
-    <div className="bg-gray-900 flex flex-col flex-1 shadow flex-shrink w-full max-w-md rounded">
+    <div className="bg-gray-900 flex flex-col flex-1 shadow flex-shrink w-full max-w-md rounded overflow-hidden">
       <div className="flex p-2 border-b text-gray-500">
         <p className="flex flex-col flex-1 text-gray-500">{props.title}</p>
         <a

@@ -13,11 +13,11 @@ export type Server2Client = Mapper<{
   }
   Project: {
     id: ProjectId
-    msg: Server2Client_Project
+    msg: Server2ClientProject
   }
 }>
 
-export type Server2Client_Project = Mapper<{
+export type Server2ClientProject = Mapper<{
   Files: {
     list: FileInfo[]
   }
@@ -26,11 +26,11 @@ export type Server2Client_Project = Mapper<{
   }
   File: {
     id: FileId
-    msg: Server2Client_Project_File
+    msg: Server2ClientProjectFile
   }
 }>
 
-export type Server2Client_Project_File = Mapper<{
+export type Server2ClientProjectFile = Mapper<{
   FileLock: { lock: Lock }
   FileSource: { src: string }
   FileDoc: { doc: Doc }

@@ -8,6 +8,7 @@ use std::io;
 use std::path::PathBuf;
 
 use crate::client::Client;
+use crate::file::FileId;
 use crate::project::{GetInfo, Project, ProjectId, ProjectInfo};
 
 use crate::s2c::*;
@@ -16,6 +17,7 @@ pub struct Hub {
     projects_path: PathBuf,
     connections: Vec<Option<Addr<Client>>>,
     projects: HashMap<ProjectId, Addr<Project>>,
+    tmpdir: tempdir::TempDir,
 }
 
 impl Hub {
@@ -24,6 +26,7 @@ impl Hub {
             projects_path,
             connections: vec![],
             projects: HashMap::new(),
+            tmpdir: tempdir::TempDir::new("hub").unwrap(),
         };
 
         fs::create_dir_all(&hub.projects_path)?;
@@ -39,13 +42,6 @@ impl Hub {
                 // TODO
             }
         }
-
-        // hub.create_project("Sample Project".to_string());
-        // // hub.create_project("Another Project".to_string());
-        // hub.load_project(
-        //     "Another Project".to_string(),
-        //     PathBuf::from("./tmp/Another Project"),
-        // );
         Ok(hub)
     }
     fn generate_project_info_list(
@@ -63,10 +59,12 @@ impl Hub {
     }
     fn create_project(&mut self, name: String) -> (ProjectId, Addr<Project>) {
         let id = ProjectId {
-            project_id: self.projects.len() as i64,
+            project_id: self.projects.len() as _,
         };
         let path = self.projects_path.join(&name);
-        let project = Project::new(id, name, path);
+        let project_tmpdir = self.tmpdir.path().join(&format!("{}", id.project_id));
+        fs::create_dir_all(&project_tmpdir).unwrap();
+        let project = Project::new(id, name, path, project_tmpdir);
         self.projects.insert(id, project.clone());
 
         (id, project)
@@ -74,9 +72,11 @@ impl Hub {
     fn load_project(&mut self, name: String, path: PathBuf) -> (ProjectId, Addr<Project>) {
         println!("loading project at {:?}", path);
         let id = ProjectId {
-            project_id: self.projects.len() as i64,
+            project_id: self.projects.len() as _,
         };
-        let project = Project::read_from_disk(path.to_owned());
+        let project_tmpdir = self.tmpdir.path().join(&format!("{}", id.project_id));
+        fs::create_dir_all(&project_tmpdir).unwrap();
+        let project = Project::read_from_disk(path.to_owned(), project_tmpdir);
         self.projects.insert(id, project.clone());
 
         (id, project)
@@ -156,5 +156,31 @@ impl Handler<GetProject> for Hub {
     type Result = Option<Addr<Project>>;
     fn handle(&mut self, msg: GetProject, _: &mut Context<Self>) -> Option<Addr<Project>> {
         self.projects.get(&msg.id).cloned()
+    }
+}
+
+#[derive(Debug)]
+pub struct GetCompileArtifactDir {
+    pub project_id: ProjectId,
+    pub file_id: FileId,
+}
+
+impl Message for GetCompileArtifactDir {
+    type Result = CompileArtifactDir;
+}
+
+#[derive(MessageResponse)]
+pub struct CompileArtifactDir {
+    pub path: PathBuf,
+}
+
+impl Handler<GetCompileArtifactDir> for Hub {
+    type Result = CompileArtifactDir;
+    fn handle(&mut self, msg: GetCompileArtifactDir, _: &mut Context<Self>) -> CompileArtifactDir {
+        let path = self.tmpdir.path().join(format!(
+            "{}/{}",
+            msg.project_id.project_id, msg.file_id.file_id
+        ));
+        CompileArtifactDir { path }
     }
 }

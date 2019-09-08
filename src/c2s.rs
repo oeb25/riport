@@ -11,13 +11,13 @@ pub enum Client2Server {
     },
     Project {
         id: ProjectId,
-        msg: Client2Server_Project,
+        msg: Client2ServerProject,
     },
 }
 
 #[derive(Deserialize, Debug)]
 #[serde(tag = "type")]
-pub enum Client2Server_Project {
+pub enum Client2ServerProject {
     JoinProject,
     LeaveProject,
     CreateFile {
@@ -29,13 +29,13 @@ pub enum Client2Server_Project {
     },
     File {
         id: FileId,
-        msg: Client2Server_Project_File,
+        msg: Client2ServerProjectFile,
     },
 }
 
 #[derive(Deserialize, Debug)]
 #[serde(tag = "type")]
-pub enum Client2Server_Project_File {
+pub enum Client2ServerProjectFile {
     JoinFileSource,
     LeaveFileSource,
     EditFileSource { contents: String },
