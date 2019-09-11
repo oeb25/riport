@@ -92,6 +92,27 @@ impl Handler<GetInfo> for File {
     }
 }
 
+pub struct GetDoc;
+impl Message for GetDoc {
+    type Result = GetDocResponce;
+}
+
+#[derive(MessageResponse)]
+pub struct GetDocResponce {
+    pub doc: Doc,
+}
+
+impl Handler<GetDoc> for File {
+    type Result = GetDocResponce;
+
+    fn handle(&mut self, _: GetDoc, _: &mut Self::Context) -> GetDocResponce {
+        // TODO: Don't recompile if not needed
+        self.compile();
+        let doc = self.doc.clone().unwrap();
+        GetDocResponce { doc }
+    }
+}
+
 #[derive(Serialize, MessageResponse)]
 pub struct FileInfo {
     pub name: String,

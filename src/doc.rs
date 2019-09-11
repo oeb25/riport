@@ -1,4 +1,4 @@
-use pandoc_types::definition::{Attr, Block, Inline, Target};
+use pandoc_types::definition::{Attr, Block, Inline, Pandoc, Target};
 
 use std::collections::HashMap;
 use std::io::{self, Write};
@@ -30,6 +30,26 @@ pub fn compile(src: &str, root: &Path) -> io::Result<pandoc_types::definition::P
     });
 
     Ok(transformed)
+}
+
+pub fn to_pdf(pandoc: &Pandoc, root: &Path, pdf_path: &Path) -> io::Result<()> {
+    let mut cmd = Command::new("pandoc")
+        .args(&[
+            "-f",
+            "json",
+            "-o",
+            pdf_path.to_str().expect("failed to make str from path"),
+        ])
+        .current_dir(root)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()?;
+    let src = serde_json::to_string(pandoc).unwrap();
+    write!(cmd.stdin.as_mut().expect("failed to get stdin"), "{}", &src)?;
+    let out = cmd.wait_with_output()?;
+    let compiled = String::from_utf8_lossy(&out.stdout).to_string();
+
+    Ok(())
 }
 
 struct RunPython<'a> {

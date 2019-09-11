@@ -7,7 +7,7 @@ use futures::future::{join_all, Future};
 use std::collections::HashMap;
 use std::fs;
 use std::io;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
 use crate::client::Client;
@@ -186,10 +186,46 @@ impl Project {
                 }
             }
 
+            let pdf_path_dir = PathBuf::from("./");
+            let pdf_path_dir = pdf_path_dir.canonicalize().unwrap();
+            let pdf_path = pdf_path_dir.join(format!("./project-{}.pdf", project.id.project_id));
+
+            ctx.wait(
+                project
+                    .create_pdf(pdf_path)
+                    .into_actor(&project)
+                    .map(|_, _, _| ())
+                    .map_err(|_, _, _| ()),
+            );
+
             Ok(project)
         }
 
         Project::create(move |ctx| helper(dir, ctx, tmpdir).unwrap())
+    }
+    fn create_pdf(&self, pdf_path: PathBuf) -> impl Future<Item = PathBuf> {
+        let root = self.tmpdir.clone();
+
+        join_all(
+            self.order
+                .iter()
+                .cloned()
+                .map(|file_id| {
+                    self.files[&file_id]
+                        .send(file::GetDoc)
+                        .map(move |x| (file_id, x))
+                })
+                .collect::<Vec<_>>(),
+        )
+        .map(move |res| {
+            let meta = pandoc_types::definition::Meta(HashMap::new());
+            let doc = pandoc_types::definition::Pandoc(
+                meta,
+                res.into_iter().flat_map(|(_, xs)| xs.doc).collect(),
+            );
+            crate::doc::to_pdf(&doc, &root, &pdf_path).expect("failed to create pdf");
+            pdf_path
+        })
     }
 }
 
