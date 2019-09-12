@@ -39,7 +39,7 @@ export const socket = (
       }
       ws.onmessage = e => {
         const msg = JSON.parse(e.data)
-        // console.log("REVICE", e.data);
+        // console.log('REVICE', e.data)
         // setMessages([...messages, e.data]);
         // dispatch({ type: "NEW_MESSAGE", contents: e.data });
         handler(msg)

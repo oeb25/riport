@@ -2,10 +2,10 @@ use actix::Message;
 
 use serde::Serialize;
 
-use crate::file::{Doc, FileId, FileInfo};
+use crate::project::file::{Doc, FileId, FileInfo};
 use crate::project::{ProjectId, ProjectInfo};
 
-#[derive(Serialize)]
+#[derive(Serialize, Clone)]
 #[serde(tag = "type")]
 pub enum Lock {
     Unlock,
@@ -13,7 +13,7 @@ pub enum Lock {
     LockByMe,
 }
 
-#[derive(Serialize, Message)]
+#[derive(Serialize, Clone, Message)]
 #[serde(tag = "type")]
 pub enum Server2Client {
     Projects {
@@ -25,7 +25,7 @@ pub enum Server2Client {
     },
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Clone)]
 #[serde(tag = "type")]
 pub enum Server2ClientProject {
     Files {
@@ -40,7 +40,7 @@ pub enum Server2ClientProject {
     },
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Clone)]
 #[serde(tag = "type")]
 pub enum Server2ClientProjectFile {
     FileLock { lock: Lock },

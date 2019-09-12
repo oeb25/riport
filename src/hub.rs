@@ -7,16 +7,17 @@ use std::fs;
 use std::io;
 use std::path::PathBuf;
 
-use crate::client::Client;
-use crate::file::FileId;
-use crate::project::{GetInfo, Project, ProjectId, ProjectInfo};
+use crate::client::{Client, ClientId};
+use crate::project::file::FileId;
+use crate::project::{Project, ProjectId, ProjectInfo};
+use crate::project_actor::{GetInfo, ProjectActor};
 
 use crate::s2c::*;
 
 pub struct Hub {
     projects_path: PathBuf,
-    connections: Vec<Option<Addr<Client>>>,
-    projects: HashMap<ProjectId, Addr<Project>>,
+    connections: HashMap<ClientId, Addr<Client>>,
+    projects: HashMap<ProjectId, Addr<ProjectActor>>,
     tmpdir: tempdir::TempDir,
 }
 
@@ -24,7 +25,7 @@ impl Hub {
     pub fn new(projects_path: PathBuf) -> io::Result<Hub> {
         let mut hub = Hub {
             projects_path,
-            connections: vec![],
+            connections: HashMap::new(),
             projects: HashMap::new(),
             tmpdir: tempdir::TempDir::new("hub").unwrap(),
         };
@@ -55,28 +56,33 @@ impl Hub {
             projects.push(res);
         }
 
-        join_all(projects)
+        join_all(projects).map(|project_infos| {
+            project_infos
+                .into_iter()
+                .map(|project_info| project_info.0)
+                .collect()
+        })
     }
-    fn create_project(&mut self, name: String) -> (ProjectId, Addr<Project>) {
+    fn create_project(&mut self, name: String) -> (ProjectId, Addr<ProjectActor>) {
         let id = ProjectId {
             project_id: self.projects.len() as _,
         };
         let path = self.projects_path.join(&name);
         let project_tmpdir = self.tmpdir.path().join(&format!("{}", id.project_id));
         fs::create_dir_all(&project_tmpdir).unwrap();
-        let project = Project::new(id, name, path, project_tmpdir);
+        let project = ProjectActor::new(id, name, path, project_tmpdir);
         self.projects.insert(id, project.clone());
 
         (id, project)
     }
-    fn load_project(&mut self, name: String, path: PathBuf) -> (ProjectId, Addr<Project>) {
+    fn load_project(&mut self, name: String, path: PathBuf) -> (ProjectId, Addr<ProjectActor>) {
         println!("loading project at {:?}", path);
         let id = ProjectId {
             project_id: self.projects.len() as _,
         };
         let project_tmpdir = self.tmpdir.path().join(&format!("{}", id.project_id));
         fs::create_dir_all(&project_tmpdir).unwrap();
-        let project = Project::read_from_disk(path.to_owned(), project_tmpdir);
+        let project = ProjectActor::read_from_disk(path.to_owned(), project_tmpdir);
         self.projects.insert(id, project.clone());
 
         (id, project)
@@ -88,23 +94,18 @@ impl Actor for Hub {
 }
 
 pub struct Connect {
+    pub client_id: ClientId,
     pub adder: Addr<Client>,
 }
 
 impl Message for Connect {
-    type Result = ConnectRes;
-}
-
-#[derive(MessageResponse)]
-pub struct ConnectRes {
-    pub id: usize,
+    type Result = ();
 }
 
 impl Handler<Connect> for Hub {
-    type Result = ConnectRes;
-    fn handle(&mut self, msg: Connect, ctx: &mut Context<Self>) -> ConnectRes {
-        let id = self.connections.len();
-        self.connections.push(Some(msg.adder.clone()));
+    type Result = ();
+    fn handle(&mut self, msg: Connect, ctx: &mut Context<Self>) {
+        self.connections.insert(msg.client_id, msg.adder.clone());
 
         self.generate_project_info_list(ctx)
             .into_actor(self)
@@ -117,8 +118,6 @@ impl Handler<Connect> for Hub {
                 fut::ok(())
             })
             .wait(ctx);
-
-        ConnectRes { id }
     }
 }
 
@@ -149,12 +148,12 @@ pub struct GetProject {
 }
 
 impl Message for GetProject {
-    type Result = Option<Addr<Project>>;
+    type Result = Option<Addr<ProjectActor>>;
 }
 
 impl Handler<GetProject> for Hub {
-    type Result = Option<Addr<Project>>;
-    fn handle(&mut self, msg: GetProject, _: &mut Context<Self>) -> Option<Addr<Project>> {
+    type Result = Option<Addr<ProjectActor>>;
+    fn handle(&mut self, msg: GetProject, _: &mut Context<Self>) -> Option<Addr<ProjectActor>> {
         self.projects.get(&msg.id).cloned()
     }
 }

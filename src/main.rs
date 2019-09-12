@@ -8,20 +8,21 @@ use futures::future::{ok, Future};
 use listenfd::ListenFd;
 
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 mod c2s;
 mod client;
 mod s2c;
 
 mod doc;
-mod file;
 mod hub;
 mod project;
+mod project_actor;
 mod walk_pandoc;
 
-use crate::client::Client;
-use crate::file::FileId;
+use crate::client::{Client, ClientId};
 use crate::hub::Hub;
+use crate::project::file::FileId;
 use crate::project::ProjectId;
 
 #[get("/ws/")]
@@ -29,8 +30,12 @@ fn start_websocket(
     req: HttpRequest,
     stream: web::Payload,
     hub: web::Data<Addr<Hub>>,
+    id_counter: web::Data<AtomicU64>,
 ) -> impl Responder {
-    let resp = ws::start(Client::new(hub.get_ref().clone()), &req, stream);
+    let id = ClientId {
+        client_id: id_counter.fetch_add(1, Ordering::Relaxed),
+    };
+    let resp = ws::start(Client::new(id, hub.get_ref().clone()), &req, stream);
     resp
 }
 
@@ -74,6 +79,7 @@ fn main() {
     let server = HttpServer::new(move || {
         App::new()
             .data(hub.clone())
+            .data(AtomicU64::new(0))
             .service(start_websocket)
             .route(
                 "/artifacts/{project_id}/{file_id}/{rest:.*}",
@@ -85,7 +91,7 @@ fn main() {
     let server = if let Some(l) = listenfd.take_tcp_listener(0).unwrap() {
         server.listen(l).unwrap()
     } else {
-        server.bind("0.0.0.0:8000").unwrap()
+        server.bind("0.0.0.0:8080").unwrap()
     };
 
     server.start();

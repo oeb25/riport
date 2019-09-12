@@ -43,7 +43,7 @@ const ProjectListItem: React.SFC<{
       <div className="text-right">
         <div className="text-gray-600 text-xs">Last edit:</div>
         <div className="text-gray-500 text-sm">
-          <LiveSince time={systemTime2Date(info.last_changed).valueOf()} />
+          {/* <LiveSince time={systemTime2Date(info.last_changed).valueOf()} /> */}
         </div>
       </div>
     </>

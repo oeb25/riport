@@ -1,6 +1,6 @@
 use serde::Deserialize;
 
-use crate::file::FileId;
+use crate::project::file::FileId;
 use crate::project::ProjectId;
 
 #[derive(Deserialize, Debug)]
